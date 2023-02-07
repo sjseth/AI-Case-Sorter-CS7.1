@@ -51,7 +51,7 @@ int feedMicroSteps = 0; // how many microsteps between feeds - 0 to disable.
 int feedFactionalStep = 1; //this allows you to add a micro step every [fractionInterval]. 
 int feedFractionInterval = 3; //the interval at which micro steps get added. 
 
-bool useFeedSensor = true;
+bool useFeedSensor = false; //this is a proximity sensor under the feed tube which tells us a case has dropped completely 
 //END FEED STEP OVERRIDES
 
 //tracking variables
@@ -72,11 +72,12 @@ void setup() {
   
   pinMode(FEED_HOMING_SENSOR, INPUT); 
   pinMode(FEED_SENSOR, INPUT);
-  //digitalWrite(HOMING_SENSOR_POWER, HIGH);
   
   digitalWrite(FEED_Enable, HIGH);
   digitalWrite(SORT_Enable, HIGH);
   digitalWrite(FEED_DIRPIN, HIGH);
+
+  Serial.write("Ready\n");
  
 }
 
@@ -106,7 +107,7 @@ void loop() {
       runFeedMotorManual();
      
       checkHoming(true);
-      delay(100);//allow for vibrations to calm down for clear picture
+      //delay(100);//allow for vibrations to calm down for clear picture
       Serial.print("done\n");
       PrintQueue();
     }
@@ -116,22 +117,21 @@ void loop() {
 //polls the homing sensor for about 10 seconds
 void testHomingSensor(){
   for(int i=0; i < 500;i++){
-
     int value=digitalRead(FEED_HOMING_SENSOR);
     Serial.print(value);
     Serial.print("\n");
-   
     delay(50);
     }
   
-  }
+}
+
 void checkHoming(bool autoHome){
 
-    if(autoHome ==true && autoHoming==false)
+   if(autoHome ==true && autoHoming==false)
       return;
 
    int homingSensorVal = digitalRead(FEED_HOMING_SENSOR);
-   // Serial.print(homingSensorVal);
+  
    if(homingSensorVal ==1){
     return; //we are homed! Continue
    }
@@ -146,7 +146,6 @@ void checkHoming(bool autoHome){
       if(homingSensorVal==1){
         offset--;
        // delay(10);
-        
       }
    }
   
@@ -177,7 +176,6 @@ void runFeedMotorManual(){
       while(digitalRead(FEED_SENSOR) != 0){
        delay(50);
      }
-     //Serial.println(sensorVal);
   }
   int steps=0;
 
@@ -194,13 +192,11 @@ void runFeedMotorManual(){
     return;
   }
 
-   digitalWrite(FEED_DIRPIN, LOW);
-
+  digitalWrite(FEED_DIRPIN, LOW);
   int curFeedSteps = abs(feedSteps);
-
-   //calculate the steps based on microsteps. 
+  //calculate the steps based on microsteps. 
   steps = curFeedSteps * FEED_MICROSTEPS;
- // Serial.print(steps);
+  // Serial.print(steps);
   int delayTime = motorPulseDelay - feedSpeed; //assuming a feedspeed variable between 0 and 100. a delay of less than 20ms is too fast so 20mcs should be minimum delay for fastest speed.
   
   for(int i=0;i<steps;i++){
@@ -226,9 +222,7 @@ void runFeedMotor(int steps){
 
 
 void runSortMotorManual(int steps){
-  // Serial.print(steps);
-  int delayTime = motorPulseDelay - sortSpeed;
-     
+  int delayTime = motorPulseDelay - sortSpeed;    
   if(steps>0){
     digitalWrite(SORT_DIRPIN, LOW);
   }else{
@@ -241,7 +235,6 @@ void runSortMotorManual(int steps){
       digitalWrite(SORT_STEPPIN, LOW);
       delayMicroseconds(delayTime); //speed 156 = 1 second per revolution //def 20
   }
-
 }
 
 
@@ -380,7 +373,7 @@ bool parseSerialInput(String input)
          return true;
       }
        if(input.startsWith("getconfig")){
-<<<<<<< Updated upstream
+
           Serial.print("{\"FeedMotorSpeed\":");
           Serial.print(feedSpeed);
   
@@ -395,24 +388,6 @@ bool parseSerialInput(String input)
   
           Serial.print("}\n");
           return true;
-=======
-       //char buffer[200];
-              Serial.print("{\"FeedMotorSpeed\":");
-              Serial.print(feedSpeed);
-
-              Serial.print(",\"FeedCycleSteps\":");
-              Serial.print(feedSteps);
-
-              Serial.print(",\"SortMotorSpeed\":");
-              Serial.print(sortSpeed);
-
-              Serial.print(",\"SortSteps\":");
-              Serial.print(sortSteps);
-
-              Serial.print("}\n");
-
-         return true;
->>>>>>> Stashed changes
       }
 
       return false; //nothing matched, continue processing the loop at normal
