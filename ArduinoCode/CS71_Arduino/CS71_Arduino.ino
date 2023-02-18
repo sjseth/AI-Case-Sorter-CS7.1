@@ -19,6 +19,11 @@
 
 #define SORTER_CHUTE_SEPERATION 20 //number of steps between chutes
 
+
+bool useFeedSensor = true; //this is a proximity sensor under the feed tube which tells us a case has dropped completely 
+bool autoHoming = true; //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
+int homingOffset = 7;
+
 //not used but could be if you wanted to specify exact positions. 
 //referenced in the commented out code in the runsorter method below
 int sorterChutes[] ={0,17, 33, 49, 66, 83, 99, 116, 132}; 
@@ -30,13 +35,13 @@ int sorterChutes[] ={0,17, 33, 49, 66, 83, 99, 116, 132};
 int sorterQueue[QUEUE_LENGTH];
 
 
-bool autoHoming = true; //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
+
 
 //inputs which can be set via serial console like:  feedspeed:50 or sortspeed:60
-int feedSpeed = 30; //range: 1..100
-int feedSteps= 70; //range 1..1000 
+int feedSpeed = 75; //range: 1..100
+int feedSteps= 60; //range 1..1000 
 
-int sortSpeed = 10; //range: 1..100
+int sortSpeed = 85; //range: 1..100
 int sortSteps = 20; //range: 1..500 //20 default
 int feedPauseTime = 0; //range: 1.2000 //if you feed has two parts (back, forth), this is the pause time between the two parts. 
 
@@ -51,18 +56,22 @@ int feedMicroSteps = 0; // how many microsteps between feeds - 0 to disable.
 int feedFactionalStep = 1; //this allows you to add a micro step every [fractionInterval]. 
 int feedFractionInterval = 3; //the interval at which micro steps get added. 
 
-bool useFeedSensor = false; //this is a proximity sensor under the feed tube which tells us a case has dropped completely 
+
 //END FEED STEP OVERRIDES
 
 //tracking variables
 int sorterMotorCurrentPosition = 0;
 bool isHomed=true;
-int homingOffset = 5;
+int sorterMotorSpeed = 500; //this is default and calculated at runtime. do not change this value
+int feedMotorSpeed = 500; //this is default and calculated at runtime. do not change this value
 
 void setup() {
   
   Serial.begin(9600);
   
+  setSorterMotorSpeed(sortSpeed);
+    setFeedMotorSpeed(feedSpeed);
+    
   pinMode(FEED_Enable, OUTPUT);
   pinMode(SORT_Enable, OUTPUT);
   pinMode(FEED_DIRPIN, OUTPUT);
@@ -107,7 +116,7 @@ void loop() {
       runFeedMotorManual();
      
       checkHoming(true);
-      //delay(100);//allow for vibrations to calm down for clear picture
+      delay(100);//allow for vibrations to calm down for clear picture
       Serial.print("done\n");
       PrintQueue();
     }
@@ -197,32 +206,32 @@ void runFeedMotorManual(){
   //calculate the steps based on microsteps. 
   steps = curFeedSteps * FEED_MICROSTEPS;
   // Serial.print(steps);
-  int delayTime = motorPulseDelay - feedSpeed; //assuming a feedspeed variable between 0 and 100. a delay of less than 20ms is too fast so 20mcs should be minimum delay for fastest speed.
+ // int delayTime = motorPulseDelay - feedSpeed; //assuming a feedspeed variable between 0 and 100. a delay of less than 20ms is too fast so 20mcs should be minimum delay for fastest speed.
   
   for(int i=0;i<steps;i++){
       digitalWrite(FEED_STEPPIN, HIGH);
       delayMicroseconds(60);   //pulse. i have found 60 to be very consistent with tb6600. Noticed that faster pulses tend to drop steps. 
       digitalWrite(FEED_STEPPIN, LOW);
-      delayMicroseconds(delayTime); //speed 156 = 1 second per revolution
+      delayMicroseconds(feedMotorSpeed); //speed 156 = 1 second per revolution
   }
  
 }
 
 void runFeedMotor(int steps){
   digitalWrite(FEED_DIRPIN, LOW);
-  int delayTime = motorPulseDelay - feedSpeed; //assuming a feedspeed variable between 0 and 100. a delay of less than 20ms is too fast so 20mcs should be minimum delay for fastest speed.
+ // int delayTime = motorPulseDelay - feedSpeed; //assuming a feedspeed variable between 0 and 100. a delay of less than 20ms is too fast so 20mcs should be minimum delay for fastest speed.
   for(int i=0;i<steps;i++){
       digitalWrite(FEED_STEPPIN, HIGH);
       delayMicroseconds(60);   //pulse. i have found 60 to be very consistent with tb6600. Noticed that faster pulses tend to drop steps. 
       digitalWrite(FEED_STEPPIN, LOW);
-      delayMicroseconds(delayTime); //speed 156 = 1 second per revolution
+      delayMicroseconds(feedMotorSpeed); //speed 156 = 1 second per revolution
   }
 }
 
 
 
 void runSortMotorManual(int steps){
-  int delayTime = motorPulseDelay - sortSpeed;    
+
   if(steps>0){
     digitalWrite(SORT_DIRPIN, LOW);
   }else{
@@ -233,8 +242,33 @@ void runSortMotorManual(int steps){
       digitalWrite(SORT_STEPPIN, HIGH);
       delayMicroseconds(60);   //pulse //def 60
       digitalWrite(SORT_STEPPIN, LOW);
-      delayMicroseconds(delayTime); //speed 156 = 1 second per revolution //def 20
+      delayMicroseconds(sorterMotorSpeed); //speed 156 = 1 second per revolution //def 20
   }
+}
+
+
+
+void setSorterMotorSpeed(int speed){
+   sorterMotorSpeed = setSpeedConversion(speed);
+  }
+void setFeedMotorSpeed(int speed){
+    feedMotorSpeed = setSpeedConversion(speed);
+  }
+
+int setSpeedConversion(int speed){
+  if(speed < 1 || speed > 100){
+    return 500;
+  }
+
+  double proportion = (double)(speed - 1) / 99; //scale the range to number between 0 and 1;
+  int output = (int)(proportion * (1000-60)) + 60; //scale range 0-1 to desired output range
+
+  int finaloutput = 1060 - output; //reverse the output;
+  
+ // Serial.print("output speed: ");
+ // Serial.print(finaloutput);
+ // Serial.print("\n");
+ return finaloutput;
 }
 
 
@@ -274,6 +308,7 @@ bool parseSerialInput(String input)
       if(input.startsWith("feedspeed:")){
          input.replace("feedspeed:","");
          feedSpeed= input.toInt();
+          setFeedMotorSpeed(feedSpeed);
           Serial.print("ok\n");
          return true;
       }
@@ -298,6 +333,7 @@ bool parseSerialInput(String input)
       if(input.startsWith("sortspeed:")){
          input.replace("sortspeed:","");
          sortSpeed= input.toInt();
+         setSorterMotorSpeed(sortSpeed);
           Serial.print("ok\n");
          return true;
       }
