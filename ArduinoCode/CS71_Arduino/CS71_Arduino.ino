@@ -16,24 +16,22 @@
 #define SORT_Enable 8
 
 #define SORTER_CHUTE_SEPERATION 20 //number of steps between chutes
+#define QUEUE_LENGTH 2 //usually 1 but it is the positional distance between your camera and the sorter.
+#define PRINT_QUEUEINFO false  //used for debugging in serial monitor. prints queue info
 
-
-bool useFeedSensor = true; //this is a proximity sensor under the feed tube which tells us a case has dropped completely 
+bool useFeedSensor = false; //this is a proximity sensor under the feed tube which tells us a case has dropped completely 
 bool autoHoming = true; //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
 int homingOffset = 7;
 int slotDropDelay=450;
+
 //not used but could be if you wanted to specify exact positions. 
 //referenced in the commented out code in the runsorter method below
 int sorterChutes[] ={0,17, 33, 49, 66, 83, 99, 116, 132}; 
 
 //if your sorter design has a queue, you will set this value to your queue length. 
 //example of a queue would be like a rotary wheel where the currently recognized brass isn't going to fall into sorter for 3 more positions
-#define QUEUE_LENGTH 2 //usually 1 but it is the positional distance between your camera and the sorter.
-#define PRINT_QUEUEINFO false  //used for debugging in serial monitor. prints queue info
+
 int sorterQueue[QUEUE_LENGTH];
-
-
-
 
 //inputs which can be set via serial console like:  feedspeed:50 or sortspeed:60
 int feedSpeed = 75; //range: 1..100
@@ -54,7 +52,6 @@ int feedMicroSteps = 0; // how many microsteps between feeds - 0 to disable.
 int feedFactionalStep = 1; //this allows you to add a micro step every [fractionInterval]. 
 int feedFractionInterval = 3; //the interval at which micro steps get added. 
 
-
 //END FEED STEP OVERRIDES
 
 //tracking variables
@@ -63,12 +60,15 @@ bool isHomed=true;
 int sorterMotorSpeed = 500; //this is default and calculated at runtime. do not change this value
 int feedMotorSpeed = 500; //this is default and calculated at runtime. do not change this value
 
+unsigned int dropTimer =0; 
+unsigned int dropTimerDiff = 0;
+
 void setup() {
-  
   Serial.begin(9600);
-  
+  dropTimer = millis();
+  dropTimerDiff = millis();
   setSorterMotorSpeed(sortSpeed);
-    setFeedMotorSpeed(feedSpeed);
+  setFeedMotorSpeed(feedSpeed);
     
   pinMode(FEED_Enable, OUTPUT);
   pinMode(SORT_Enable, OUTPUT);
@@ -85,14 +85,10 @@ void setup() {
   digitalWrite(FEED_DIRPIN, HIGH);
 
   Serial.write("Ready\n");
- 
 }
 
 void loop() {
- //digitalWrite(HOMING_SENSOR_POWER, HIGH);
-      //int sensorVal = digitalRead(FEED_SENSOR);
-      //Serial.println(sensorVal);
-
+   
     if(Serial.available() > 0 )  
     {
       
@@ -107,18 +103,20 @@ void loop() {
         return;
       }
 
-
       int sortPosition = input.toInt();
       QueueAdd(sortPosition);
+
+      dropTimerDiff = millis() - dropTimer;
       runSorterMotor(QueueFetch());
+      dropTimer = millis();
+ 
       runFeedMotorManual();
-     
       checkHoming(true);
       delay(100);//allow for vibrations to calm down for clear picture
       Serial.print("done\n");
       PrintQueue();
     }
-
+    delay(5);
 }
 
 //polls the homing sensor for about 10 seconds
@@ -133,7 +131,6 @@ void testHomingSensor(){
 }
 
 void checkHoming(bool autoHome){
-
    if(autoHome ==true && autoHoming==false)
       return;
 
@@ -154,13 +151,11 @@ void checkHoming(bool autoHome){
         offset--;
        // delay(10);
       }
-   }
-  
+   }  
 }
 
 //moves the sorter arm. Blocking operation until complete
 void runSorterMotor(int chute){
-
    //you can uncomment to use the array sorterChutes for exact positions of each slot
    //int newStepsPos = sorterChutes[chute]; //the steps position from zero of the "slot"
 
@@ -170,8 +165,10 @@ void runSorterMotor(int chute){
    //calculate the amount of movement and move.
    int nextmovement = newStepsPos - sorterMotorCurrentPosition; //the number of +-steps between current position and next position
    int movement = nextmovement * SORT_MICROSTEPS; //calculate the number of microsteps required
-     if(movement !=0){
-    delay(slotDropDelay);
+   int delayTime = (int)(slotDropDelay - (int)dropTimerDiff);
+
+   if(movement !=0 && delayTime > 0){
+     delay(delayTime);
    }
    runSortMotorManual(movement);
    sorterMotorCurrentPosition = newStepsPos;
@@ -205,30 +202,25 @@ void runFeedMotorManual(){
   int curFeedSteps = abs(feedSteps);
   //calculate the steps based on microsteps. 
   steps = curFeedSteps * FEED_MICROSTEPS;
-  // Serial.print(steps);
- // int delayTime = motorPulseDelay - feedSpeed; //assuming a feedspeed variable between 0 and 100. a delay of less than 20ms is too fast so 20mcs should be minimum delay for fastest speed.
   
   for(int i=0;i<steps;i++){
       digitalWrite(FEED_STEPPIN, HIGH);
       delayMicroseconds(60);   //pulse. i have found 60 to be very consistent with tb6600. Noticed that faster pulses tend to drop steps. 
       digitalWrite(FEED_STEPPIN, LOW);
-      delayMicroseconds(feedMotorSpeed); //speed 156 = 1 second per revolution
+      delayMicroseconds(feedMotorSpeed); 
   }
  
 }
 
 void runFeedMotor(int steps){
   digitalWrite(FEED_DIRPIN, LOW);
- // int delayTime = motorPulseDelay - feedSpeed; //assuming a feedspeed variable between 0 and 100. a delay of less than 20ms is too fast so 20mcs should be minimum delay for fastest speed.
-  for(int i=0;i<steps;i++){
+   for(int i=0;i<steps;i++){
       digitalWrite(FEED_STEPPIN, HIGH);
       delayMicroseconds(60);   //pulse. i have found 60 to be very consistent with tb6600. Noticed that faster pulses tend to drop steps. 
       digitalWrite(FEED_STEPPIN, LOW);
       delayMicroseconds(feedMotorSpeed); //speed 156 = 1 second per revolution
   }
 }
-
-
 
 void runSortMotorManual(int steps){
 
@@ -265,9 +257,6 @@ int setSpeedConversion(int speed){
 
   int finaloutput = 1060 - output; //reverse the output;
   
- // Serial.print("output speed: ");
- // Serial.print(finaloutput);
- // Serial.print("\n");
  return finaloutput;
 }
 
@@ -304,6 +293,9 @@ int QueueFetch(){
 //return true if you wish to stop processing and continue to next loop
 bool parseSerialInput(String input)
 {
+      if(isDigit(input[0])){
+        return false;
+      }
       //set feed speed. Values 1-100. Def 60
       if(input.startsWith("feedspeed:")){
          input.replace("feedspeed:","");
@@ -320,13 +312,17 @@ bool parseSerialInput(String input)
          int slot=0;
          for(int a=0;a<testcount;a++)
          {
-          runSorterMotor(slot);
            slot=random(0,5);
-           runFeedMotorManual();
-           checkHoming(true);
             Serial.print(a);
+            Serial.print(" - ");
+            Serial.print(slot);
+            dropTimerDiff = millis() - dropTimer;
+            runSorterMotor(slot);
+            dropTimer = millis();
+            runFeedMotorManual();
+            checkHoming(true);
             Serial.print("\n");
-          delay(60);
+            delay(60);
          
          }
          Serial.print("ok\n");
@@ -398,10 +394,15 @@ bool parseSerialInput(String input)
          Serial.print("done\n");
          return true;
       }
-        if(input.startsWith("testhome")){
+      if(input.startsWith("testhome")){
          testHomingSensor();
          Serial.print("done\n");
          return true;
+      }
+      if(input.startsWith("setvar:")){
+        input.replace("setvar:","");
+        
+        return true;
       }
       
       //to run feeder, send  any string starting with f:
