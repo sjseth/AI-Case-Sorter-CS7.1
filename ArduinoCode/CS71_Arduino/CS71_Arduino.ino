@@ -1,8 +1,6 @@
 #include <Wire.h>
 #include <SoftwareSerial.h>
 
-
-
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
 //Stepper controller is set to 16 Microsteps (3 jumpers in place)
 #define FEED_DIRPIN 5
@@ -23,7 +21,7 @@
 bool useFeedSensor = true; //this is a proximity sensor under the feed tube which tells us a case has dropped completely 
 bool autoHoming = true; //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
 int homingOffset = 7;
-
+int slotDropDelay=450;
 //not used but could be if you wanted to specify exact positions. 
 //referenced in the commented out code in the runsorter method below
 int sorterChutes[] ={0,17, 33, 49, 66, 83, 99, 116, 132}; 
@@ -168,11 +166,13 @@ void runSorterMotor(int chute){
 
    //rather than use exact positions, we are assuming uniform seperation betweeen slots specified by sorter_chute_seperation constant
    int newStepsPos = chute * SORTER_CHUTE_SEPERATION;
-
+ 
    //calculate the amount of movement and move.
    int nextmovement = newStepsPos - sorterMotorCurrentPosition; //the number of +-steps between current position and next position
    int movement = nextmovement * SORT_MICROSTEPS; //calculate the number of microsteps required
-   
+     if(movement !=0){
+    delay(slotDropDelay);
+   }
    runSortMotorManual(movement);
    sorterMotorCurrentPosition = newStepsPos;
 }
@@ -317,13 +317,17 @@ bool parseSerialInput(String input)
       if(input.startsWith("test:")){
          input.replace("test:","");
          int testcount = input.toInt();
+         int slot=0;
          for(int a=0;a<testcount;a++)
          {
+          runSorterMotor(slot);
+           slot=random(0,5);
            runFeedMotorManual();
            checkHoming(true);
             Serial.print(a);
             Serial.print("\n");
           delay(60);
+         
          }
          Serial.print("ok\n");
          return true;
