@@ -18,11 +18,12 @@
 #define SORTER_CHUTE_SEPERATION 20 //number of steps between chutes
 #define QUEUE_LENGTH 2 //usually 1 but it is the positional distance between your camera and the sorter.
 #define PRINT_QUEUEINFO false  //used for debugging in serial monitor. prints queue info
+#define FEEDSENSOR_ENABLED true //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely 
 
-bool useFeedSensor = false; //this is a proximity sensor under the feed tube which tells us a case has dropped completely 
+
 bool autoHoming = true; //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
-int homingOffset = 7;
-int slotDropDelay=450;
+int homingOffset =4;
+int slotDropDelay=175;
 
 //not used but could be if you wanted to specify exact positions. 
 //referenced in the commented out code in the runsorter method below
@@ -34,7 +35,7 @@ int sorterChutes[] ={0,17, 33, 49, 66, 83, 99, 116, 132};
 int sorterQueue[QUEUE_LENGTH];
 
 //inputs which can be set via serial console like:  feedspeed:50 or sortspeed:60
-int feedSpeed = 75; //range: 1..100
+int feedSpeed = 95; //range: 1..100
 int feedSteps= 60; //range 1..1000 
 
 int sortSpeed = 85; //range: 1..100
@@ -62,11 +63,11 @@ int feedMotorSpeed = 500; //this is default and calculated at runtime. do not ch
 
 unsigned int dropTimer =0; 
 unsigned int dropTimerDiff = 0;
-
+bool useFeedSensor = FEEDSENSOR_ENABLED; 
 void setup() {
   Serial.begin(9600);
-  dropTimer = millis();
-  dropTimerDiff = millis();
+ // dropTimer = millis();
+  //dropTimerDiff = millis();
   setSorterMotorSpeed(sortSpeed);
   setFeedMotorSpeed(feedSpeed);
     
@@ -97,7 +98,8 @@ void loop() {
       //normal input would just be the tray # you want to sort to which would be something like "1\n" or "9\n" (\n)if you are using serial console, the \n is already included in the writeline
       //so just the number 1-10 would suffice. 
       //the software on the other end should be listening for  "done\n". 
-
+     //  dropTimerDiff = millis() - dropTimer;
+      // dropTimer = millis();
       //if true was returned, we go to next looping, else we continue down below
       if(parseSerialInput(input) == true){
         return;
@@ -106,17 +108,17 @@ void loop() {
       int sortPosition = input.toInt();
       QueueAdd(sortPosition);
 
-      dropTimerDiff = millis() - dropTimer;
-      runSorterMotor(QueueFetch());
-      dropTimer = millis();
+      
  
+      runSorterMotor(QueueFetch());
+     
       runFeedMotorManual();
       checkHoming(true);
-      delay(100);//allow for vibrations to calm down for clear picture
+      delay(50);//allow for vibrations to calm down for clear picture
       Serial.print("done\n");
       PrintQueue();
     }
-    delay(5);
+    delay(1);
 }
 
 //polls the homing sensor for about 10 seconds
@@ -125,7 +127,7 @@ void testHomingSensor(){
     int value=digitalRead(FEED_HOMING_SENSOR);
     Serial.print(value);
     Serial.print("\n");
-    delay(50);
+    delay(30);
     }
   
 }
@@ -165,10 +167,18 @@ void runSorterMotor(int chute){
    //calculate the amount of movement and move.
    int nextmovement = newStepsPos - sorterMotorCurrentPosition; //the number of +-steps between current position and next position
    int movement = nextmovement * SORT_MICROSTEPS; //calculate the number of microsteps required
-   int delayTime = (int)(slotDropDelay - (int)dropTimerDiff);
-
-   if(movement !=0 && delayTime > 0){
-     delay(delayTime);
+  // int delayTime = (int)(slotDropDelay - (int)dropTimerDiff);
+   // Serial.print(dropTimerDiff);
+   // Serial.print("\n");
+   // Serial.print(delayTime);
+   // Serial.print("\n");
+   if(movement !=0 )
+   {
+     //&& delayTime > 0){
+    // delay(delayTime);
+    delay(slotDropDelay);
+     //Serial.print(delayTime);
+     //Serial.print(" - Delay\n");
    }
    runSortMotorManual(movement);
    sorterMotorCurrentPosition = newStepsPos;
@@ -296,6 +306,16 @@ bool parseSerialInput(String input)
       if(isDigit(input[0])){
         return false;
       }
+
+      if(input.startsWith("usefeedsensor:")){
+        input.replace("usefeedsensor:","");
+        useFeedSensor = false;
+        if(input == "1"){
+          useFeedSensor = FEEDSENSOR_ENABLED;
+        }
+        Serial.print("ok\n");
+        return true;
+      }
       //set feed speed. Values 1-100. Def 60
       if(input.startsWith("feedspeed:")){
          input.replace("feedspeed:","");
@@ -316,9 +336,9 @@ bool parseSerialInput(String input)
             Serial.print(a);
             Serial.print(" - ");
             Serial.print(slot);
-            dropTimerDiff = millis() - dropTimer;
+          //  dropTimerDiff = millis() - dropTimer;
             runSorterMotor(slot);
-            dropTimer = millis();
+          //  dropTimer = millis();
             runFeedMotorManual();
             checkHoming(true);
             Serial.print("\n");
