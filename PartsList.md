@@ -28,7 +28,7 @@ You will need (2) 6mm screw/bold and nuts and washers.
 * [2 Nema 17 Motors]()   
 One of the motors will be used for the sorter but often cheaper to buy them in 2 or 3 packs. 
 
-* [6mm Motor Flange Couplers]()
+* [5mm Flange Shaft Coupling](https://www.amazon.com/gp/product/B07L1FMBBC)
 
 
 # 
