@@ -13,6 +13,8 @@ You will need (2) 6mm screw/bold and nuts and washers.
 
 * [Homing Sensor](https://www.amazon.com/gp/product/B07PCN6T6F)
 
+* [M8 Inductive Proximity Sensor](https://www.amazon.com/gp/product/B081254GB2)
+
 * [Springs]()
 
 * [o-rings]()
