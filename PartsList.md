@@ -15,6 +15,8 @@ You will need (2) 6mm screw/bold and nuts and washers.
 
 * [M8 Inductive Proximity Sensor](https://www.amazon.com/gp/product/B081254GB2)
 
+* [M10x1mm to M8x1mm Thread Adapters](https://www.amazon.com/dp/B0BMZV52BK)
+
 * [Springs]()
 
 * [o-rings]()
