@@ -6,8 +6,8 @@
 
 
 
-* [M8 x 80 Socket Head Cap screw](https://www.amazon.com/M8-1-25-Stainless-Socket-Screws-Coverage/dp/B08V53TR22)  
-You will need 1 8mm screw/bold and nuts and washers. 
+* [M6 x 80 Socket Head Cap screw](https://www.amazon.com/dp/B01N91YP3N)  
+You will need (2) 6mm screw/bold and nuts and washers. 
 
 * [Homing Sensor](https://www.amazon.com/gp/product/B07PCN6T6F)
 
