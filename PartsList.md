@@ -40,7 +40,7 @@ One of the motors will be used for the sorter but often cheaper to buy them in 2
 There is quite a bit of overlap in the parts for the sorter and most likely you already bought them if you bought the parts from Classifier Parts list above. Here is the list of parts required
 
 * (1) Nema17 Motor
-* (1) 6mm couple flange
+* (1) 5mm couple flange
 * (2) M6 x ?? screws (for mounting to the pole)
 * (2) M6 Butterfly nuts (regular nuts will work too)
 * (2) M4 x ?? mm screws (used to lock sort arm pipes in the place)
