@@ -23,7 +23,7 @@
 
 bool autoHoming = true; //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
 int homingOffset =4;
-int slotDropDelay=175;
+int slotDropDelay=250;
 
 //not used but could be if you wanted to specify exact positions. 
 //referenced in the commented out code in the runsorter method below
