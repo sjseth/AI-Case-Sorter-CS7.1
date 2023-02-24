@@ -9,6 +9,8 @@
 * [M6 x 80 Socket Head Cap screw](https://www.amazon.com/dp/B01N91YP3N)  
 You will need (2) 6mm screw/bold and nuts and washers. 
 
+* [6mm x 19mm x 6mm  Bearings](https://www.amazon.com/dp/B07FMV2ZHR)
+
 * [Homing Sensor](https://www.amazon.com/gp/product/B07PCN6T6F)
 
 * [Springs]()
