@@ -6,10 +6,16 @@
 
 
 
-* [M8 x 80 Socket Head Cap screw](https://www.amazon.com/M8-1-25-Stainless-Socket-Screws-Coverage/dp/B08V53TR22)  
-You will need 1 8mm screw/bold and nuts and washers. 
+* [M6 x 80 Socket Head Cap screw](https://www.amazon.com/dp/B01N91YP3N)  
+You will need (2) 6mm screw/bold and nuts and washers. 
+
+* [6mm x 19mm x 6mm  Bearings](https://www.amazon.com/dp/B07FMV2ZHR)
 
 * [Homing Sensor](https://www.amazon.com/gp/product/B07PCN6T6F)
+
+* [M8 Inductive Proximity Sensor](https://www.amazon.com/gp/product/B081254GB2)
+
+* [M10x1mm to M8x1mm Thread Adapters](https://www.amazon.com/dp/B0BMZV52BK)
 
 * [Springs]()
 
@@ -22,7 +28,7 @@ You will need 1 8mm screw/bold and nuts and washers.
 * [2 Nema 17 Motors]()   
 One of the motors will be used for the sorter but often cheaper to buy them in 2 or 3 packs. 
 
-* [6mm Motor Flange Couplers]()
+* [5mm Flange Shaft Coupling](https://www.amazon.com/gp/product/B07L1FMBBC)
 
 
 # 
@@ -34,7 +40,7 @@ One of the motors will be used for the sorter but often cheaper to buy them in 2
 There is quite a bit of overlap in the parts for the sorter and most likely you already bought them if you bought the parts from Classifier Parts list above. Here is the list of parts required
 
 * (1) Nema17 Motor
-* (1) 6mm couple flange
+* (1) 5mm couple flange
 * (2) M6 x ?? screws (for mounting to the pole)
 * (2) M6 Butterfly nuts (regular nuts will work too)
 * (2) M4 x ?? mm screws (used to lock sort arm pipes in the place)
