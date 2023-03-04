@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230303.1 ///
+/// VERSION CS 7.1.230304.1 ///
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -23,17 +23,18 @@
 #define PRINT_QUEUEINFO false       //used for debugging in serial monitor. prints queue info
 #define FEEDSENSOR_ENABLED true     //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
 
-#define FEED_DONE_SIGNAL 3     // Writes HIGH Signal When Feed is done
-int feedDoneSignalTime = 0;  //The amount of time in MS to send the feed done signal;
+#define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done
+
+int feedDoneSignalTime = 30;  //The amount of time in MS to send the feed done signal;
 
 bool autoFeedHoming = true;  //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
 int homingFeedOffset = 4;
-int homingSortOffset = 2;
-int slotDropDelay = 250;
-bool autoSorterHoming = false;
+int homingSortOffset = 0;
+int slotDropDelay = 150;
+bool autoSorterHoming = true;
 
-bool homeSorterOnStartup = false;
-bool homeFeedOnStartup = false;
+bool homeSorterOnStartup = true;
+bool homeFeedOnStartup = true;
 
 //acceleration settings for sorter motor
 bool useAcceleration = true;
@@ -61,7 +62,7 @@ int sorterQueue[QUEUE_LENGTH];
 int feedSpeed = 95;  //range: 1..100
 int feedSteps = 60;  //range 1..1000
 
-int sortSpeed = 85;     //range: 1..100
+int sortSpeed = 95;     //range: 1..100
 int sortSteps = 20;     //range: 1..500 //20 default
 int feedPauseTime = 0;  //range: 1.2000 //if you feed has two parts (back, forth), this is the pause time between the two parts.
 
@@ -99,21 +100,27 @@ void setup() {
   pinMode(SORT_DIRPIN, OUTPUT);
   pinMode(SORT_STEPPIN, OUTPUT);
 
+  pinMode(FEED_DONE_SIGNAL, OUTPUT);
+
+
   pinMode(FEED_HOMING_SENSOR, INPUT);
+  pinMode(SORT_HOMING_SENSOR, INPUT);
   pinMode(FEED_SENSOR, INPUT);
+
 
   digitalWrite(FEED_Enable, HIGH);
   digitalWrite(SORT_Enable, HIGH);
   digitalWrite(FEED_DIRPIN, HIGH);
 
   if(homeSorterOnStartup){
+    Serial.println("Homing Sorter...");
       checkSorterHoming(false);
   }
   if(homeFeedOnStartup){
       checkFeedHoming(false);
   }
 
-  Serial.write("Ready\n");
+  Serial.print("Ready\n");
 }
 
 void loop() {
@@ -140,7 +147,8 @@ void loop() {
 
     runFeedMotorManual();
     checkFeedHoming(true);
-    delay(50);  //allow for vibrations to calm down for clear picture
+    feedDone();
+    //delay(50);  //allow for vibrations to calm down for clear picture
     Serial.print("done\n");
     PrintQueue();
   }
@@ -158,9 +166,9 @@ void testHomingSensor() {
 }
 
 void feedDone() {
-  digitalWrite(FEED_DONE_SIGNAL, HIGH);
-  delay(feedDoneSignalTime);
-  digitalWrite(FEED_DONE_SIGNAL, LOW);
+      digitalWrite(FEED_DONE_SIGNAL, HIGH);
+    delay(feedDoneSignalTime);
+    digitalWrite(FEED_DONE_SIGNAL,LOW);
 }
 
 void checkFeedHoming(bool isAutoHomeCycle) {
@@ -190,6 +198,8 @@ void checkSorterHoming(bool isAutoHomeCycle) {
     return;
 
   int homingSensorVal = digitalRead(SORT_HOMING_SENSOR);
+  Serial.println(homingSensorVal);
+
   int offset = homingSortOffset * FEED_MICROSTEPS;
 
   //if we are triggering the sensor and isAutoHomeCycle is not true, we run the motor forward a few steps and home back slowely
@@ -198,20 +208,20 @@ void checkSorterHoming(bool isAutoHomeCycle) {
     int hfs = 15 * SORT_MICROSTEPS;
     runSortMotorManual(hfs);
   } else if (homingSensorVal == 1) {
-    runFeedMotor(offset);
+    runSortMotorManual(offset);
     return;
   }
 
     //when trying to find home, the sorter arm should not move more than one full rotation (200 steps)
     int homingMax = 198 * FEED_MICROSTEPS;
-    while (homingSensorVal == 0 && homingMax > 0) {
-      runFeedMotor(-1);
+    while (digitalRead(SORT_HOMING_SENSOR) == 0 && homingMax > 0) {
+      runSortMotorManual(-1);
       homingSensorVal = digitalRead(FEED_HOMING_SENSOR);
       homingMax--;
     }
 
     //now lets run forward our offset
-    runFeedMotor(offset);
+    runSortMotorManual(offset);
 
 }
 
@@ -304,7 +314,7 @@ void runSortMotorManual(int steps) {
   } else {
     digitalWrite(SORT_DIRPIN, HIGH);
   }
-  delay(5);
+   delayMicroseconds(10);
   steps = abs(steps);
   for (int i = 0; i < steps; i++) {
     digitalWrite(SORT_STEPPIN, HIGH);
@@ -439,6 +449,11 @@ bool parseSerialInput(String input) {
     return true;
   }
 
+ if (input.startsWith("feeddone")) {
+    feedDone();
+    Serial.print("ok\n");
+    return true;
+  }
 
   //used to test tracking on steppers for feed motor. specify the number of feeds to perform: eg:  "test:60" will feed 60 times.
   if (input.startsWith("test:")) {
