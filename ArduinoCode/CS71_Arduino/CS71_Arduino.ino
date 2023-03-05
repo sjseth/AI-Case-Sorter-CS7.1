@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230305.1 ///
+/// VERSION CS 7.1.230305.2 ///
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -237,12 +237,22 @@ void runFeedMotorManual() {
 
   if (useFeedSensor) {
     int i = 0;
-    while (digitalRead(FEED_SENSOR) != 0 && i < 60) {
+    while (digitalRead(FEED_SENSOR) != 0) {
       i++;
-      delay(50);
-    }
-    if (i > 60) {
-      return;
+      delay(10);
+      if (i == 200) {
+        Serial.println("Waiting for brass");
+        i=0;
+      }
+      if (Serial.available() > 0) {
+        String input = Serial.readStringUntil('\n');
+        if (parseSerialInput(input) == false) {
+          break;
+        }
+      }
+      if(i>10000){
+         i=0;
+      }
     }
   }
   int steps = 0;
