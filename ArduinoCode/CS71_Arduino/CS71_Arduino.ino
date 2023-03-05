@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230304.1 ///
+/// VERSION CS 7.1.230305.1 ///
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -6,87 +6,74 @@
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
 //Stepper controller is set to 16 Microsteps (3 jumpers in place)
 #define FEED_DIRPIN 5
-#define FEED_STEPPIN 2
+#define FEED_STEPPIN 2  
 #define FEED_Enable 8
 #define FEED_MICROSTEPS 16
 #define FEED_HOMING_SENSOR 10
-#define FEED_SENSOR 9
+#define FEED_SENSOR 9 //the proximity sensor under the feed tube
+#define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done
+#define FEEDSENSOR_ENABLED true     //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
 
-#define SORT_MICROSTEPS 16
+#define SORT_MICROSTEPS 16 
 #define SORT_DIRPIN 6
 #define SORT_STEPPIN 3
 #define SORT_Enable 8
-#define SORT_HOMING_SENSOR 11
+#define SORT_HOMING_SENSOR 12
 
-#define SORTER_CHUTE_SEPERATION 20  //number of steps between chutes
+#define SORTER_CHUTE_SEPERATION 20 //number of steps between chutes
+
 #define QUEUE_LENGTH 2              //usually 1 but it is the positional distance between your camera and the sorter.
 #define PRINT_QUEUEINFO false       //used for debugging in serial monitor. prints queue info
-#define FEEDSENSOR_ENABLED true     //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
 
-#define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done
 
+/// DELAY SETTINGS ///
+//These settings will add delay on feed complete. They are cumulative. These are to help prevent brass slinging
 int feedDoneSignalTime = 30;  //The amount of time in MS to send the feed done signal;
+int slotDropDelay = 100; //how long to wait before moving the sorter arm after feedcycle has finished. (used to eliminate brass slinging) 
 
+/// FEED SETTINGS ///
+bool homeFeedOnStartup = true; //automatically home the feeder on startup
 bool autoFeedHoming = true;  //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
-int homingFeedOffset = 4;
-int homingSortOffset = 0;
-int slotDropDelay = 150;
-bool autoSorterHoming = true;
+int homingFeedOffset = 2; // the number of steps to continue moving after homing sensor is triggered
+int feedSpeed = 94;  //range: 1..100
+int feedSteps = 60;  //range 1..1000
 
-bool homeSorterOnStartup = true;
-bool homeFeedOnStartup = true;
+/// SORT SETTINGS///
+bool homeSorterOnStartup = false; //automatically home the sorter on startup
+bool autoSorterHoming = false; //set to true if homing sensor is installed and connected. 
+int homingSortOffset = 0; //the amount of  steps to move forward after activating the homing switch
+int sortSpeed = 94;     //range: 1..100
+int sortSteps = 20;     //range: 1..500 //20 default
+
 
 //acceleration settings for sorter motor
 bool useAcceleration = true;
 int upslope = 2 * SORT_MICROSTEPS;
 int downslope = 2 * SORT_MICROSTEPS;
-
 int accelerationFactor = 1400;              //the top delay value when ramping. somewhere between 1000 and 2000 seems to work well.
 int rampFactor = accelerationFactor / 100;  //the ramp delay microseconds to add/remove per step; should be roughly accelerationfactor / 50
 int sortTestDelay = 150;                    //stop delay time in between sorts in test mode
 //end acceleration settins
 
 
-int pulsewidth = 10;  //this is used by both feed and sort motors to set the pulse width in micro seconds.
+//for the CS7 and CS7.1 the queue length is 2. 
+//This is because there are two feeds required to move brass from the camera  to the sorter drop
+int sorterQueue[QUEUE_LENGTH];
 
 //not used but could be if you wanted to specify exact positions.
 //referenced in the commented out code in the runsorter method below
 //int sorterChutes[] ={0,17, 33, 49, 66, 83, 99, 116, 132};
 
-//if your sorter design has a queue, you will set this value to your queue length.
-//example of a queue would be like a rotary wheel where the currently recognized brass isn't going to fall into sorter for 3 more positions
 
-int sorterQueue[QUEUE_LENGTH];
-
-//inputs which can be set via serial console like:  feedspeed:50 or sortspeed:60
-int feedSpeed = 95;  //range: 1..100
-int feedSteps = 60;  //range 1..1000
-
-int sortSpeed = 95;     //range: 1..100
-int sortSteps = 20;     //range: 1..500 //20 default
-int feedPauseTime = 0;  //range: 1.2000 //if you feed has two parts (back, forth), this is the pause time between the two parts.
-
-//used to calculate motor speeds and works in conjunction with microsteps.
-//480 for 8 microsteps, 240 for 16, 120 for 32,
-int motorPulseDelay = 240;
-
-//FEED STEP OVERRIDES
-//These settings override the feedSteps&b and oddFeed settings above.
-//If feedSteps & B are too coarse, you can directly calculate the microsteps needed between feed positions and use that here.
-int feedMicroSteps = 0;        // how many microsteps between feeds - 0 to disable.
-int feedFactionalStep = 1;     //this allows you to add a micro step every [fractionInterval].
-int feedFractionInterval = 3;  //the interval at which micro steps get added.
-
-//END FEED STEP OVERRIDES
-
-//tracking variables
+//tracking variables, do not edit!
 int sorterMotorCurrentPosition = 0;
 bool isHomed = true;
 int sorterMotorSpeed = 500;  //this is default and calculated at runtime. do not change this value
 int feedMotorSpeed = 500;    //this is default and calculated at runtime. do not change this value
-
-
+int pulsewidth = 10;  //this is used by both feed and sort motors to set the pulse width in micro seconds.
 bool useFeedSensor = FEEDSENSOR_ENABLED;
+
+
 void setup() {
   Serial.begin(9600);
 
@@ -113,7 +100,6 @@ void setup() {
   digitalWrite(FEED_DIRPIN, HIGH);
 
   if(homeSorterOnStartup){
-    Serial.println("Homing Sorter...");
       checkSorterHoming(false);
   }
   if(homeFeedOnStartup){
@@ -155,18 +141,10 @@ void loop() {
   delay(1);
 }
 
-//polls the homing sensor for about 10 seconds
-void testHomingSensor() {
-  for (int i = 0; i < 500; i++) {
-    int value = digitalRead(FEED_HOMING_SENSOR);
-    Serial.print(value);
-    Serial.print("\n");
-    delay(30);
-  }
-}
 
+//These are the commands to execute when feed is done
 void feedDone() {
-      digitalWrite(FEED_DONE_SIGNAL, HIGH);
+    digitalWrite(FEED_DONE_SIGNAL, HIGH);
     delay(feedDoneSignalTime);
     digitalWrite(FEED_DONE_SIGNAL,LOW);
 }
@@ -198,7 +176,7 @@ void checkSorterHoming(bool isAutoHomeCycle) {
     return;
 
   int homingSensorVal = digitalRead(SORT_HOMING_SENSOR);
-  Serial.println(homingSensorVal);
+  //Serial.println(homingSensorVal);
 
   int offset = homingSortOffset * FEED_MICROSTEPS;
 
@@ -255,8 +233,6 @@ void runSorterMotor(int chute) {
   sorterMotorCurrentPosition = newStepsPos;
 }
 
-int fractionIntervalIndex = 0;
-
 void runFeedMotorManual() {
 
   if (useFeedSensor) {
@@ -271,19 +247,7 @@ void runFeedMotorManual() {
   }
   int steps = 0;
 
-  //if the feedMicroSteps override is used, we do that and return.
-  if (feedMicroSteps > 0) {
-    steps = feedMicroSteps;
-    if (fractionIntervalIndex == feedFractionInterval) {
-      steps = steps + feedFactionalStep;
-      fractionIntervalIndex = 0;
-    } else {
-      fractionIntervalIndex++;
-    }
-    runFeedMotor(steps);
-    return;
-  }
-
+ 
   digitalWrite(FEED_DIRPIN, LOW);
   int curFeedSteps = abs(feedSteps);
   //calculate the steps based on microsteps.
@@ -386,12 +350,9 @@ int setSpeedConversion(int speed) {
   if (speed < 1 || speed > 100) {
     return 500;
   }
-
   double proportion = (double)(speed - 1) / 99;       //scale the range to number between 0 and 1;
   int output = (int)(proportion * (1000 - 60)) + 60;  //scale range 0-1 to desired output range
-
   int finaloutput = 1060 - output;  //reverse the output;
-
   return finaloutput;
 }
 
@@ -476,7 +437,6 @@ bool parseSerialInput(String input) {
     return true;
   }
 
-
   //used to test tracking on steppers for feed motor. specify the number of feeds to perform: eg:  "test:60" will feed 60 times.
   if (input.startsWith("sorttest:")) {
     input.replace("sorttest:", "");
@@ -490,9 +450,9 @@ bool parseSerialInput(String input) {
         continue;
       }
 
-      slot = random(0, 8);
+      slot = random(0, 7);
       while (slot == cslot) {
-        slot = random(0, 8);
+        slot = random(0, 6);
       }
 
       cslot = slot;
@@ -535,13 +495,6 @@ bool parseSerialInput(String input) {
     return true;
   }
 
-  //set feed steps. Values 1-1000. Def 100
-  if (input.startsWith("feedpausetime:")) {
-    input.replace("feedpausetime:", "");
-    feedPauseTime = input.toInt();
-    Serial.print("ok\n");
-    return true;
-  }
 
   //set feed steps. Values 1-1000. Def 100
   if (input.startsWith("autohome:")) {
@@ -569,31 +522,20 @@ bool parseSerialInput(String input) {
     Serial.print("done\n");
     return true;
   }
+
   //home the feeder
-  if (input.startsWith("home")) {
+  if (input.startsWith("homefeeder")) {
     checkFeedHoming(false);
     Serial.print("done\n");
     return true;
   }
-  if (input.startsWith("testhome")) {
-    testHomingSensor();
+
+  if (input.startsWith("homesorter")) {
+    checkSorterHoming(false);
     Serial.print("done\n");
     return true;
   }
-  if (input.startsWith("setvar:")) {
-    input.replace("setvar:", "");
 
-    return true;
-  }
-
-  //to run feeder, send  any string starting with f:
-  if (input.startsWith("f")) {
-    input.replace("f", "");
-    int fs = input.toInt();
-    runFeedMotor(fs);
-    Serial.print("done\n");
-    return true;
-  }
   if (input.startsWith("getconfig")) {
 
     Serial.print("{\"FeedMotorSpeed\":");
