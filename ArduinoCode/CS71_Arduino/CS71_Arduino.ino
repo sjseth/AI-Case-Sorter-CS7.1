@@ -18,7 +18,7 @@
 #define SORT_DIRPIN 6
 #define SORT_STEPPIN 3
 #define SORT_Enable 8
-#define SORT_HOMING_SENSOR 12
+#define SORT_HOMING_SENSOR 11
 
 #define SORTER_CHUTE_SEPERATION 20 //number of steps between chutes
 
@@ -28,18 +28,18 @@
 
 /// DELAY SETTINGS ///
 //These settings will add delay on feed complete. They are cumulative. These are to help prevent brass slinging
-int feedDoneSignalTime = 30;  //The amount of time in MS to send the feed done signal;
-int slotDropDelay = 100; //how long to wait before moving the sorter arm after feedcycle has finished. (used to eliminate brass slinging) 
+int feedDoneSignalTime = 60;  //The amount of time in MS to send the feed done signal;
+int slotDropDelay = 50; //how long to wait before moving the sorter arm after feedcycle has finished. (used to eliminate brass slinging) 
 
 /// FEED SETTINGS ///
 bool homeFeedOnStartup = true; //automatically home the feeder on startup
 bool autoFeedHoming = true;  //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
-int homingFeedOffset = 2; // the number of steps to continue moving after homing sensor is triggered
+int homingFeedOffset = 3; // the number of steps to continue moving after homing sensor is triggered
 int feedSpeed = 94;  //range: 1..100
 int feedSteps = 60;  //range 1..1000
 
 /// SORT SETTINGS///
-bool homeSorterOnStartup = false; //automatically home the sorter on startup
+bool homeSorterOnStartup = true; //automatically home the sorter on startup
 bool autoSorterHoming = false; //set to true if homing sensor is installed and connected. 
 int homingSortOffset = 0; //the amount of  steps to move forward after activating the homing switch
 int sortSpeed = 94;     //range: 1..100
@@ -54,7 +54,6 @@ int accelerationFactor = 1400;              //the top delay value when ramping. 
 int rampFactor = accelerationFactor / 100;  //the ramp delay microseconds to add/remove per step; should be roughly accelerationfactor / 50
 int sortTestDelay = 150;                    //stop delay time in between sorts in test mode
 //end acceleration settins
-
 
 //for the CS7 and CS7.1 the queue length is 2. 
 //This is because there are two feeds required to move brass from the camera  to the sorter drop
@@ -126,15 +125,11 @@ void loop() {
 
     int sortPosition = input.toInt();
     QueueAdd(sortPosition);
-
-
-
     runSorterMotor(QueueFetch());
-
     runFeedMotorManual();
     checkFeedHoming(true);
     feedDone();
-    //delay(50);  //allow for vibrations to calm down for clear picture
+    delay(20);  //allow for vibrations to calm down for clear picture
     Serial.print("done\n");
     PrintQueue();
   }
@@ -144,6 +139,7 @@ void loop() {
 
 //These are the commands to execute when feed is done
 void feedDone() {
+    delay(50); //this allows some time for the brass to start dropping before generating the airblast
     digitalWrite(FEED_DONE_SIGNAL, HIGH);
     delay(feedDoneSignalTime);
     digitalWrite(FEED_DONE_SIGNAL,LOW);
@@ -183,7 +179,7 @@ void checkSorterHoming(bool isAutoHomeCycle) {
   //if we are triggering the sensor and isAutoHomeCycle is not true, we run the motor forward a few steps and home back slowely
   //This does the jump. But if isAutoHomeCycle is false, the we just need to run the offset and are back off to the races.
   if (homingSensorVal == 1 && isAutoHomeCycle == false) {
-    int hfs = 15 * SORT_MICROSTEPS;
+    int hfs = 20 * SORT_MICROSTEPS;
     runSortMotorManual(hfs);
   } else if (homingSensorVal == 1) {
     runSortMotorManual(offset);
@@ -194,6 +190,7 @@ void checkSorterHoming(bool isAutoHomeCycle) {
     int homingMax = 198 * FEED_MICROSTEPS;
     while (digitalRead(SORT_HOMING_SENSOR) == 0 && homingMax > 0) {
       runSortMotorManual(-1);
+      delay(4);
       homingSensorVal = digitalRead(FEED_HOMING_SENSOR);
       homingMax--;
     }
