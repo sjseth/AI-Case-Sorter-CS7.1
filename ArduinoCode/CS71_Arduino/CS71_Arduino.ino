@@ -28,8 +28,10 @@
 
 /// DELAY SETTINGS ///
 //These settings will add delay on feed complete. They are cumulative. These are to help prevent brass slinging
-int feedDoneSignalTime = 60;  //The amount of time in MS to send the feed done signal;
-int slotDropDelay = 50; //how long to wait before moving the sorter arm after feedcycle has finished. (used to eliminate brass slinging) 
+int feedDonePreSignalDelay = 40; //how much time to wait before sending feedDone signal
+int feedDoneSignalTime = 40;  //The amount of time in MS to send the feed done signal;
+int slotDropDelay = 0; //how long to wait before moving the sorter arm after feedcycle has finished before issuing feedDone Command (used to eliminate brass slinging) 
+
 
 /// FEED SETTINGS ///
 bool homeFeedOnStartup = true; //automatically home the feeder on startup
@@ -139,7 +141,7 @@ void loop() {
 
 //These are the commands to execute when feed is done
 void feedDone() {
-    delay(50); //this allows some time for the brass to start dropping before generating the airblast
+    delay(feedDonePreSignalDelay); //this allows some time for the brass to start dropping before generating the airblast
     digitalWrite(FEED_DONE_SIGNAL, HIGH);
     delay(feedDoneSignalTime);
     digitalWrite(FEED_DONE_SIGNAL,LOW);
