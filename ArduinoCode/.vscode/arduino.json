@@ -3,5 +3,6 @@
     "board": "arduino:avr:nano",
     "port": "COM6",
     "programmer": "avrisp",
-    "sketch": "CS71_Arduino\\CS71_Arduino.ino"
+    "sketch": "CS71_Arduino\\CS71_Arduino.ino",
+    "output": "..\\build"
 }
