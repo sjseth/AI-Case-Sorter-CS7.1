@@ -20,3 +20,7 @@ The VESA mount should be printed with supports above 50 degrees. Again, strong m
 ```
 
 ![Picture of completed mount](Vesa%20Mount%20Pic1.jpg)
+
+![3d Preview Front](3dMountPreview1.jpg)
+
+![3d Preview Back](3dMountPreview2.jpg)
