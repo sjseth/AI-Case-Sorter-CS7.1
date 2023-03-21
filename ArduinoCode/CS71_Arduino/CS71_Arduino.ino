@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230305.2 ///
+/// VERSION CS 7.1.230321.1 ///
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -399,6 +399,21 @@ int QueueFetch() {
 bool parseSerialInput(String input) {
   if (isDigit(input[0])) {
     return false;
+  }
+
+ if (input.startsWith("xf:")) {
+    input.replace("xf:", "");
+    int sortPosition = input.toInt();
+    QueueAdd(sortPosition);
+    runSorterMotor(QueueFetch());
+     useFeedSensor = false;
+    runFeedMotorManual();
+    checkFeedHoming(true);
+    feedDone();
+    useFeedSensor = FEEDSENSOR_ENABLED;
+    delay(20);  //allow for vibrations to calm down for clear picture
+    Serial.print("done\n");
+    return true;
   }
 
   if (input.startsWith("usefeedsensor:")) {
