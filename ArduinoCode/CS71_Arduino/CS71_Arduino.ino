@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230305.2 ///
+/// VERSION CS 7.1.230321.2 ///
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -28,21 +28,21 @@
 
 /// DELAY SETTINGS ///
 //These settings will add delay on feed complete. They are cumulative. These are to help prevent brass slinging
-int feedDonePreSignalDelay = 40; //how much time to wait before sending feedDone signal
-int feedDoneSignalTime = 40;  //The amount of time in MS to send the feed done signal;
-int slotDropDelay = 0; //how long to wait before moving the sorter arm after feedcycle has finished before issuing feedDone Command (used to eliminate brass slinging) 
+int feedDonePreSignalDelay = 0; //how much time to wait before sending feedDone signal
+int feedDoneSignalTime = 50;  //The amount of time in MS to send the feed done signal;
+int slotDropDelay = 400; //how long to wait before moving the sorter arm after feedcycle has finished before issuing feedDone Command (used to eliminate brass slinging) 
 
 
 /// FEED SETTINGS ///
 bool homeFeedOnStartup = true; //automatically home the feeder on startup
 bool autoFeedHoming = true;  //if true, then homing will be checked and adjusted on each feed cycle. Requires homing sensor.
 int homingFeedOffset = 3; // the number of steps to continue moving after homing sensor is triggered
-int feedSpeed = 94;  //range: 1..100
+int feedSpeed = 92;  //range: 1..100
 int feedSteps = 60;  //range 1..1000
 
 /// SORT SETTINGS///
 bool homeSorterOnStartup = true; //automatically home the sorter on startup
-bool autoSorterHoming = false; //set to true if homing sensor is installed and connected. 
+bool autoSorterHoming = true; //set to true if homing sensor is installed and connected. 
 int homingSortOffset = 0; //the amount of  steps to move forward after activating the homing switch
 int sortSpeed = 94;     //range: 1..100
 int sortSteps = 20;     //range: 1..500 //20 default
@@ -52,7 +52,7 @@ int sortSteps = 20;     //range: 1..500 //20 default
 bool useAcceleration = true;
 int upslope = 2 * SORT_MICROSTEPS;
 int downslope = 2 * SORT_MICROSTEPS;
-int accelerationFactor = 1400;              //the top delay value when ramping. somewhere between 1000 and 2000 seems to work well.
+int accelerationFactor = 1600;              //the top delay value when ramping. somewhere between 1000 and 2000 seems to work well.
 int rampFactor = accelerationFactor / 100;  //the ramp delay microseconds to add/remove per step; should be roughly accelerationfactor / 50
 int sortTestDelay = 150;                    //stop delay time in between sorts in test mode
 //end acceleration settins
@@ -237,11 +237,10 @@ void runFeedMotorManual() {
   if (useFeedSensor) {
     int i = 0;
     while (digitalRead(FEED_SENSOR) != 0) {
-      i++;
+      
       delay(10);
-      if (i == 200) {
+      if (i == 100) {
         Serial.println("Waiting for brass");
-        i=0;
       }
       if (Serial.available() > 0) {
         String input = Serial.readStringUntil('\n');
@@ -249,8 +248,8 @@ void runFeedMotorManual() {
           break;
         }
       }
-      if(i>10000){
-         i=0;
+      if(i<101){
+         i++;
       }
     }
   }
@@ -399,6 +398,21 @@ int QueueFetch() {
 bool parseSerialInput(String input) {
   if (isDigit(input[0])) {
     return false;
+  }
+
+ if (input.startsWith("xf:")) {
+    input.replace("xf:", "");
+    int sortPosition = input.toInt();
+    QueueAdd(sortPosition);
+    runSorterMotor(QueueFetch());
+     useFeedSensor = false;
+    runFeedMotorManual();
+    checkFeedHoming(true);
+    feedDone();
+    useFeedSensor = FEEDSENSOR_ENABLED;
+    delay(20);  //allow for vibrations to calm down for clear picture
+    Serial.print("done\n");
+    return true;
   }
 
   if (input.startsWith("usefeedsensor:")) {
