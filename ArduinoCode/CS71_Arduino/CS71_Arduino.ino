@@ -244,9 +244,8 @@ void runFeedMotorManual() {
       }
       if (Serial.available() > 0) {
         String input = Serial.readStringUntil('\n');
-        if (parseSerialInput(input) == false) {
-          break;
-        }
+        parseSerialInput(input);
+        return;
       }
       if(i<101){
          i++;
