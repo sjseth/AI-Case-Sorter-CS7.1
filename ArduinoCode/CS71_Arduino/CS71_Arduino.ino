@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230325.1 ///
+/// VERSION CS 7.1.230325.2 ///
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -39,7 +39,7 @@ bool autoFeedHoming = true;  //if true, then homing will be checked and adjusted
 int homingFeedOffset = 3; // the number of steps to continue moving after homing sensor is triggered
 int feedSpeed = 92;  //range: 1..100
 int feedSteps = 60;  //range 1..1000
-
+int feedStepsMax = 90; //if we don't hit a homing node within this number of steps, we throw an error. 
 /// SORT SETTINGS///
 bool homeSorterOnStartup = true; //automatically home the sorter on startup
 bool autoSorterHoming = true; //set to true if homing sensor is installed and connected. 
@@ -73,7 +73,8 @@ int sorterMotorSpeed = 500;  //this is default and calculated at runtime. do not
 int feedMotorSpeed = 500;    //this is default and calculated at runtime. do not change this value
 int pulsewidth = 10;  //this is used by both feed and sort motors to set the pulse width in micro seconds.
 bool useFeedSensor = FEEDSENSOR_ENABLED;
-
+int feedStepCounter = 0;
+int feedStepsMaxThreshold = feedStepsMax * FEED_MICROSTEPS;
 
 void setup() {
   Serial.begin(9600);
@@ -124,7 +125,7 @@ void loop() {
     if (parseSerialInput(input) == true) {
       return;
     }
-
+    feedStepCounter= 0;
     int sortPosition = input.toInt();
     QueueAdd(sortPosition);
     runSorterMotor(QueueFetch());
@@ -161,6 +162,27 @@ void checkFeedHoming(bool isAutoHomeCycle) {
   int offset = homingFeedOffset * FEED_MICROSTEPS;
   while ((homingSensorVal == 0 && i < 12000) || offset > 0) {
     runFeedMotor(1);
+    feedStepCounter++;
+   // Serial.print(feedStepCounter);
+   // Serial.print(" - ");
+   // Serial.print(feedStepsMaxThreshold);
+   // Serial.print("\n");
+    if(feedStepCounter >= feedStepsMaxThreshold){
+        
+        Serial.println("Error: Feed Overtravel Detected");
+        while(true){
+          delay(50);
+          if (Serial.available() > 0) {
+              String input = Serial.readStringUntil('\n');
+              parseSerialInput(input);
+              break;
+             
+          }
+        }
+       
+        return;
+      
+    }
     homingSensorVal = digitalRead(FEED_HOMING_SENSOR);
     i++;
     if (homingSensorVal == 1) {
@@ -259,12 +281,13 @@ void runFeedMotorManual() {
   int curFeedSteps = abs(feedSteps);
   //calculate the steps based on microsteps.
   steps = curFeedSteps * FEED_MICROSTEPS;
-
+   feedStepCounter = 0;
   for (int i = 0; i < steps; i++) {
     digitalWrite(FEED_STEPPIN, HIGH);
     delayMicroseconds(pulsewidth);  //pulse. recommended minimum > than 1 micro
     digitalWrite(FEED_STEPPIN, LOW);
     delayMicroseconds(feedMotorSpeed);
+    feedStepCounter++;
   }
 }
 
