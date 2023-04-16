@@ -8,3 +8,6 @@ Recommend printing it with brim of at least 6 lines for better adhesion.
 
 This spring took about 2 weeks to get to the US and comes with two 1000mm springs Which is enough to make aproximately 6 - 8 feed tubes. 
 
+![img1](sfa-images/1.jpg)
+![img2](sfa-images/2.jpg)
+![img3](sfa-images/3.jpg)   
