@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230415.1 ///
+/// VERSION CS 7.1.230423.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.0 or newer
 
 #include <Wire.h>
