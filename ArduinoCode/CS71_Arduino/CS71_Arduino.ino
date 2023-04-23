@@ -509,7 +509,7 @@ void runFeedMotor() {
 
 void homeFeedMotor(){
   
-  if(IsFeedHoming==true){
+  if(IsFeedHoming==true && FEEDSENSOR_ENABLED == true){
     
     if (digitalRead(FEED_HOMING_SENSOR) == 1) {
       IsFeedHoming=false;
