@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230415.1 ///
+/// VERSION CS 7.1.230423.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.0 or newer
 
 #include <Wire.h>
@@ -509,7 +509,7 @@ void runFeedMotor() {
 
 void homeFeedMotor(){
   
-  if(IsFeedHoming==true){
+  if(IsFeedHoming==true && FEEDSENSOR_ENABLED == true){
     
     if (digitalRead(FEED_HOMING_SENSOR) == 1) {
       IsFeedHoming=false;
