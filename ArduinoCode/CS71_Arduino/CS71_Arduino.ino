@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230423.1 ///
+/// VERSION CS 7.1.230429.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.0 or newer
 
 #include <Wire.h>
@@ -16,7 +16,7 @@
 #define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
 #define FEEDSENSOR_ENABLED true //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
 #define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop
-
+#define FEED_HOMING_ENABLED true //enabled feed homing sensor
 
 #define SORT_DIRPIN 6 //maps to the DIRECTION signal for the sorter motor
 #define SORT_STEPPIN 3 //maps to the PULSE signal for the sorter motor
@@ -473,7 +473,7 @@ void onFeedComplete(){
 
 void scheduleRun(){
   if(FeedScheduled==true && IsFeeding==false){
-    if(digitalRead(FEED_SENSOR) == 0 || forceFeed==true){
+    if(digitalRead(FEED_SENSOR) == 0 || forceFeed==true || FEEDSENSOR_ENABLED==false){
       //set run variables
       FeedSteps = feedMicroSteps;
       FeedScheduled=false;
@@ -509,7 +509,15 @@ void runFeedMotor() {
 
 void homeFeedMotor(){
   
-  if(IsFeedHoming==true && FEEDSENSOR_ENABLED == true){
+  if(IsFeedHoming==true ){
+   
+    if(FEED_HOMING_ENABLED == false){
+      IsFeedHoming=false;
+       IsFeedHomingOffset = false;
+      FeedCycleComplete=true;
+      FeedCycleInProgress = false;
+      return;
+    }
     
     if (digitalRead(FEED_HOMING_SENSOR) == 1) {
       IsFeedHoming=false;
