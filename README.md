@@ -3,7 +3,7 @@
 This is a project for building a case sorter which uses machine vision, machine learing AI to sort cases by headstamp. This repo contains the Arduino code as well as all the 3d Models required to complete this project. 
 
 ## Instructions
-Most of the information you need to build this project is available in [Instructions.pdf](instructions.pdf).
+Most of the information you need to build this project is available in [Instructions.pdf](Instructions.pdf).
 
 ---------
 ## Parts List
