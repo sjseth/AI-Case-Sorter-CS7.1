@@ -15,7 +15,7 @@
 #define FEED_HOMING_SENSOR 10  //connects to the feed wheel homing sensor
 #define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
 #define FEEDSENSOR_ENABLED true //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
-#define FEEDSENSOR_TYPE 0 // NO = 0, NC = 1
+#define FEEDSENSOR_TYPE 0 // NPN = 0, PNP = 1
 #define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop
 #define FEED_HOMING_ENABLED true //enabled feed homing sensor
 
