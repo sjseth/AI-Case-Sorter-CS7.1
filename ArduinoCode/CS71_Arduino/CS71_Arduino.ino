@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230507.2 ///
+/// VERSION CS 7.1.230511.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.0 or newer
 
 #include <Wire.h>
@@ -62,12 +62,12 @@
 // Time in milliseconds to wait before sending "done" response to serialport (allows for everything to stop moving before taking the picture): runs after the feed_cycle_complete signal
 // With AirDrop mod enabled, it needs about 20-30MS. If airdrop is not enabled, it should be closer to 50-70. 
 // If you are getting blurred pictures, increase this value. 
-#define FEED_CYCLE_NOTIFICATION_DELAY 50 
+#define FEED_CYCLE_NOTIFICATION_DELAY 100 
 
 // number of MS to wait after feedcycle before moving sort arm.
 // Prevents slinging brass. With AirDrop Mod enabled, this can be 100 or lower, if not enabled, set to 400 or more. 
 // This gives time for the brass to clear the sort tube before moving the sort arm. 
-#define SLOT_DROP_DELAY 400 
+#define SLOT_DROP_DELAY 350 
 
 
 ///END OF USER CONFIGURATIONS ///
@@ -473,9 +473,11 @@ void onFeedComplete(){
 }
 
 void scheduleRun(){
+ 
   if(FeedScheduled==true && IsFeeding==false){
     if(digitalRead(FEED_SENSOR) == FEEDSENSOR_TYPE || forceFeed==true || FEEDSENSOR_ENABLED==false){
       //set run variables
+      IsFeedError=false;
       FeedSteps = feedMicroSteps;
       FeedScheduled=false;
       FeedCycleInProgress = true;
@@ -641,4 +643,3 @@ int setSpeedConversion(int speed) {
 
   return 1060 - ((int)(((double)(speed - 1) / 99) * (1000 - 60)) + 60);
 }
-
