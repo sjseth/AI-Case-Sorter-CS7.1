@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230511.1 ///
+/// VERSION CS 7.1.230525.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.0 or newer
 
 #include <Wire.h>
@@ -40,15 +40,16 @@
 
 //FEED MOTOR ACCELLERATION SETTINGS (DISABLED BY DEFAULT)
 #define FEED_ACC_SLOPE 32  //2 steps * 16 MicroStes
-#define ACC_FACTOR 1200
-#define FEED_MOTOR_SPEED 92 //range of 1-100
+
+#define FEED_MOTOR_SPEED 94 //range of 1-100
 #define ACC_FEED_ENABLED false //enabled or disables feed motor accelleration. 
 
 //SORT MOTOR ACCELLERATION SETTINGS (ENABLED BY DEFAULT)
 #define ACC_SORT_ENABLED true
-#define SORT_MOTOR_SPEED 92 //range of 1-100
+#define SORT_MOTOR_SPEED 96 //range of 1-100
 #define SORT_ACC_SLOPE 64 //this is the number of microsteps to accelerate and deaccellerate in a sort. 
-
+#define ACC_FACTOR 1200
+#define SORT_HOMING_ENABLED true
 //FEED DELAY SETTINGS
 
 // Used to send signal to add-ons when feed cycle completes (used by airdrop mod). 
@@ -62,12 +63,12 @@
 // Time in milliseconds to wait before sending "done" response to serialport (allows for everything to stop moving before taking the picture): runs after the feed_cycle_complete signal
 // With AirDrop mod enabled, it needs about 20-30MS. If airdrop is not enabled, it should be closer to 50-70. 
 // If you are getting blurred pictures, increase this value. 
-#define FEED_CYCLE_NOTIFICATION_DELAY 100 
+#define FEED_CYCLE_NOTIFICATION_DELAY 80 
 
 // number of MS to wait after feedcycle before moving sort arm.
 // Prevents slinging brass. With AirDrop Mod enabled, this can be 100 or lower, if not enabled, set to 400 or more. 
 // This gives time for the brass to clear the sort tube before moving the sort arm. 
-#define SLOT_DROP_DELAY 350 
+#define SLOT_DROP_DELAY 330 
 
 
 ///END OF USER CONFIGURATIONS ///
@@ -122,6 +123,7 @@ int testsCompleted=0;
 int sortToSlot=0;
 unsigned long theTime;
 unsigned long timeSinceLastSortMove;
+unsigned long msgResetTimer;
 
 
 void setup() {
@@ -150,7 +152,7 @@ void setup() {
 
   IsFeedHoming=true;
   IsSortHoming=true;
-   
+   msgResetTimer = millis();
 }
 
 
@@ -286,7 +288,11 @@ void checkSerial(){
   }
 }
 
+
+//this method is to run all "other" routines not in the main duty cycles (such as tests)
 void runAux(){
+
+  //This runs the feed and sort test if scheduled
   if(IsTestCycle==true&&FeedScheduled==false&&FeedCycleInProgress==false){
     if(testsCompleted<testCycleInterval){
        int slot = random(0,6);
@@ -309,6 +315,8 @@ void runAux(){
       testsCompleted=0;
     }
   }
+
+  //this runs the sorter only test cycles if scheduled
   if(IsSortTestCycle==true&&SortInProgress==false){
     if(testsCompleted<testCycleInterval){
        int slot = random(0,8);
@@ -327,6 +335,9 @@ void runAux(){
     }
   }
 }
+
+
+
 
 void moveSorterToNextPosition(int position){
     sortToSlot=position;
@@ -484,9 +495,14 @@ void scheduleRun(){
       FeedCycleComplete=false;
       IsFeeding=true;
     }else{
-     Serial.println("waiting for brass");
+      if(theTime - msgResetTimer > 500){
+          Serial.flush();
+          Serial.println("waiting for brass");
+         
+          msgResetTimer = millis();
+      }
     // Serial.flush();
-     delay(500);
+     
     }
   }
 }
@@ -561,6 +577,12 @@ void homeFeedMotor(){
 }
 
 void homeSortMotor(){
+  if(IsSortHoming==true && SORT_HOMING_ENABLED == false){
+     IsSorting=false;
+         SortComplete = true;
+         IsSortHoming =false;
+         return;
+    }
   if(IsSortHoming==true){
      
     if(IsSorting==true){
