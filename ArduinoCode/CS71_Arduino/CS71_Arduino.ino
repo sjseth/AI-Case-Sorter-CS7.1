@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230525.1 ///
+/// VERSION CS 7.1.230615.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.0 or newer
 
 #include <Wire.h>
@@ -46,7 +46,7 @@
 
 //SORT MOTOR ACCELLERATION SETTINGS (ENABLED BY DEFAULT)
 #define ACC_SORT_ENABLED true
-#define SORT_MOTOR_SPEED 96 //range of 1-100
+#define SORT_MOTOR_SPEED 94 //range of 1-100
 #define SORT_ACC_SLOPE 64 //this is the number of microsteps to accelerate and deaccellerate in a sort. 
 #define ACC_FACTOR 1200
 #define SORT_HOMING_ENABLED true
@@ -193,6 +193,15 @@ void checkSerial(){
         sortDelayMS=400;
           IsSortHoming=true;
           Serial.print("ok\n");
+         return;
+      } 
+      if (input.startsWith("stop")) {
+          FeedScheduled=false;
+          IsFeedHoming=false;
+          IsFeedHomingOffset = false;
+          FeedCycleComplete=true;
+          FeedCycleInProgress = false;
+         // Serial.print("ok\n");
          return;
       } 
 
@@ -495,7 +504,7 @@ void scheduleRun(){
       FeedCycleComplete=false;
       IsFeeding=true;
     }else{
-      if(theTime - msgResetTimer > 500){
+      if(theTime - msgResetTimer > 1000){
           Serial.flush();
           Serial.println("waiting for brass");
          
