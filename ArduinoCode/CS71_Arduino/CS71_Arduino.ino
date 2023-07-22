@@ -54,7 +54,7 @@
 
 // Used to send signal to add-ons when feed cycle completes (used by airdrop mod). 
 // IF NOT USING MODS, SET TO 0. With Airdrop set to 60-100 (length of the airblast)
-#define FEED_CYCLE_COMPLETE_SIGNALTIME 0 
+#define FEED_CYCLE_COMPLETE_SIGNALTIME 60
 
 // The amount of time to wait after the feed completes before sending the FEED_CYCLE_COMPLETE SIGNAL
 // IF NOT USING MODS, SET TO 0. with Airdrop set to 30-50 which allows the brass to start falling before sending the blast of air. 
@@ -157,7 +157,7 @@ void setup() {
 
 
 void loop() {
-   theTime = millis();
+  
    checkSerial();
    runSortMotor();
    onSortComplete();
@@ -353,6 +353,7 @@ void moveSorterToNextPosition(int position){
     sortStepsToNextPosition = (qPos1 * sortSteps * SORT_MICROSTEPS) - (qPos2 * sortSteps * SORT_MICROSTEPS);
     sortStepsToNextPositionTracker = sortStepsToNextPosition;
     if(sortStepsToNextPosition !=0){
+       theTime = millis();
        slotDelayCalc = (SLOT_DROP_DELAY - (theTime - timeSinceLastSortMove));
        slotDelayCalc = slotDelayCalc > 0? slotDelayCalc : 1;
        //Serial.println(slotDelayCalc);
@@ -504,8 +505,9 @@ void scheduleRun(){
       FeedCycleComplete=false;
       IsFeeding=true;
     }else{
+       theTime = millis();
       if(theTime - msgResetTimer > 1000){
-          Serial.flush();
+         // Serial.flush();
           Serial.println("waiting for brass");
          
           msgResetTimer = millis();
