@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230722.1 ///
+/// VERSION CS 7.1.230725.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.0 or newer
 
 #include <Wire.h>
@@ -54,11 +54,11 @@
 
 // Used to send signal to add-ons when feed cycle completes (used by airdrop mod). 
 // IF NOT USING MODS, SET TO 0. With Airdrop set to 60-100 (length of the airblast)
-#define FEED_CYCLE_COMPLETE_SIGNALTIME 60
+#define FEED_CYCLE_COMPLETE_SIGNALTIME 30 
 
 // The amount of time to wait after the feed completes before sending the FEED_CYCLE_COMPLETE SIGNAL
 // IF NOT USING MODS, SET TO 0. with Airdrop set to 30-50 which allows the brass to start falling before sending the blast of air. 
-#define FEED_CYCLE_COMPLETE_PRESIGNALDELAY 0 
+#define FEED_CYCLE_COMPLETE_PRESIGNALDELAY 0
 
 // Time in milliseconds to wait before sending "done" response to serialport (allows for everything to stop moving before taking the picture): runs after the feed_cycle_complete signal
 // With AirDrop mod enabled, it needs about 20-30MS. If airdrop is not enabled, it should be closer to 50-70. 
@@ -68,7 +68,7 @@
 // number of MS to wait after feedcycle before moving sort arm.
 // Prevents slinging brass. With AirDrop Mod enabled, this can be 100 or lower, if not enabled, set to 400 or more. 
 // This gives time for the brass to clear the sort tube before moving the sort arm. 
-#define SLOT_DROP_DELAY 330 
+#define SLOT_DROP_DELAY 300
 
 
 ///END OF USER CONFIGURATIONS ///
@@ -152,12 +152,11 @@ void setup() {
 
   IsFeedHoming=true;
   IsSortHoming=true;
-   msgResetTimer = millis();
+  msgResetTimer = millis();
 }
 
 
 void loop() {
-  
    checkSerial();
    runSortMotor();
    onSortComplete();
@@ -171,31 +170,63 @@ void loop() {
    runAux();
 }
 
+bool commandReady = false;
+char endMarker = '\n';
+char rc;
+
+void recvWithEndMarker() {
+    while (Serial.available() > 0 ) {
+        rc = Serial.read();
+        delay(1);
+        if (rc != endMarker) {
+            input += rc;
+        }
+        else {
+            commandReady=true; 
+            return;
+        }
+    }
+ }
+void resetCommand(){
+  input="";
+  commandReady=false;
+}
+
 void checkSerial(){
   if(FeedCycleInProgress==false && SortInProgress==false && Serial.available()>0){
-      input = Serial.readStringUntil('\n');
-     
+      //input = Serial.readStringUntil('\n');
+       recvWithEndMarker();
+       
+       if(!commandReady){
+        return;
+       }
+      // Serial.print(input);
+       
      //this should be most cases
       if (isDigit(input[0])) {
         moveSorterToNextPosition(input.toInt());
         FeedScheduled = true;
         IsFeeding = false;
         scheduleRun();
+        resetCommand();
         return;
       }
       if (input.startsWith("homefeeder")) {
         feedDelayMS=400;
           IsFeedHoming=true;
          Serial.print("ok\n");
+         resetCommand();
          return;
       } 
       if (input.startsWith("homesorter")) {
         sortDelayMS=400;
           IsSortHoming=true;
           Serial.print("ok\n");
+          resetCommand();
          return;
       } 
       if (input.startsWith("stop")) {
+      resetCommand();
           FeedScheduled=false;
           IsFeedHoming=false;
           IsFeedHomingOffset = false;
@@ -209,6 +240,7 @@ void checkSerial(){
           input.replace("sortto:", "");
           moveSorterToPosition(input.toInt());
            Serial.print("ok\n");
+           resetCommand();
          return;
       } 
 
@@ -216,6 +248,7 @@ void checkSerial(){
           input.replace("xf:", "");
           forceFeed = true;
           moveSorterToNextPosition(input.toInt());
+          resetCommand();
           FeedScheduled = true;
           IsFeeding = false;
           scheduleRun();
@@ -223,6 +256,7 @@ void checkSerial(){
       }
 
       if (input.startsWith("getconfig")) {
+     
         Serial.print("{\"FeedMotorSpeed\":");
         Serial.print(feedSpeed);
 
@@ -236,6 +270,7 @@ void checkSerial(){
         Serial.print(sortSteps);
 
         Serial.print("}\n");
+        resetCommand();
         return;      
       }
 
@@ -245,6 +280,7 @@ void checkSerial(){
         feedSpeed = input.toInt();
         setFeedMotorSpeed(feedSpeed);
         Serial.print("ok\n");
+        resetCommand();
         return;
       }
 
@@ -253,6 +289,7 @@ void checkSerial(){
         sortSpeed = input.toInt();
         setSorterMotorSpeed(sortSpeed);
         Serial.print("ok\n");
+        resetCommand();
         return;
       }
 
@@ -261,6 +298,7 @@ void checkSerial(){
         input.replace("sortsteps:", "");
         sortSteps = input.toInt();
         Serial.print("ok\n");
+        resetCommand();
         return;
       }
 
@@ -270,6 +308,7 @@ void checkSerial(){
         feedSteps = input.toInt();
         feedMicroSteps = feedSteps * FEED_MICROSTEPS;
         Serial.print("ok\n");
+        resetCommand();
         return;
       }
 
@@ -281,6 +320,7 @@ void checkSerial(){
         FeedScheduled=false;
         FeedCycleInProgress=false;
         Serial.print("testing started\n");
+        resetCommand();
         return;
       }
 
@@ -290,9 +330,10 @@ void checkSerial(){
         testCycleInterval=input.toInt();
         testsCompleted=0;
         Serial.print("testing started\n");
+        resetCommand();
         return;
       }
-
+      resetCommand();
       Serial.print("ok\n");
   }
 }
@@ -346,14 +387,12 @@ void runAux(){
 }
 
 
-
-
 void moveSorterToNextPosition(int position){
     sortToSlot=position;
     sortStepsToNextPosition = (qPos1 * sortSteps * SORT_MICROSTEPS) - (qPos2 * sortSteps * SORT_MICROSTEPS);
     sortStepsToNextPositionTracker = sortStepsToNextPosition;
     if(sortStepsToNextPosition !=0){
-       theTime = millis();
+      theTime = millis();
        slotDelayCalc = (SLOT_DROP_DELAY - (theTime - timeSinceLastSortMove));
        slotDelayCalc = slotDelayCalc > 0? slotDelayCalc : 1;
        //Serial.println(slotDelayCalc);
@@ -505,7 +544,7 @@ void scheduleRun(){
       FeedCycleComplete=false;
       IsFeeding=true;
     }else{
-       theTime = millis();
+      theTime = millis();
       if(theTime - msgResetTimer > 1000){
          // Serial.flush();
           Serial.println("waiting for brass");
