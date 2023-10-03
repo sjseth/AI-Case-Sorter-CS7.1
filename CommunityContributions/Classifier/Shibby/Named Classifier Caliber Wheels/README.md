@@ -1,7 +1,8 @@
-CS7.1 Caliber Conversions enhanced by Shibby
+# CS7.1 Caliber Conversions enhanced by Shibby
 
 
-Summary of changes from stock CS7.1 conversions
+
+**Summary of changes from stock CS7.1 conversions**
 
 
 Conversions with "a" (i.e CS7.1a) - resized bearing hole to "19.2" and caliber designations. WARNING - This is a press fit so it may or may not work for you depending on how you have dialed in the printer you are using and the bearings you are using. 
