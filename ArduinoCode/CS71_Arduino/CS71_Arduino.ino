@@ -24,7 +24,7 @@
 #define SORT_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
 #define SORT_MICROSTEPS 16 //how many microsteps the controller is configured for. 
 #define SORT_HOMING_SENSOR 11  //connects to the sorter homing sensor
-
+#define AIR_DROP_ENABLED true //enables airdrop
 
 //ARDUINO CONFIGURATIONS
 
@@ -74,7 +74,7 @@
 ///END OF USER CONFIGURATIONS ///
 ///DO NOT EDIT BELOW THIS LINE ///
 
-
+bool airDropEnabled = AIR_DROP_ENABLED;
 int feedSpeed = FEED_MOTOR_SPEED; //represents a number between 1-100
 int feedSteps = FEED_STEPS;
 int feedMotorSpeed = 500;//this is default and calculated at runtime. do not change this value
@@ -269,6 +269,9 @@ void checkSerial(){
         Serial.print(",\"SortSteps\":");
         Serial.print(sortSteps);
 
+        Serial.print(",\"AirDropEnabled\":");
+        Serial.print(airDropEnabled);
+
         Serial.print("}\n");
         resetCommand();
         return;      
@@ -312,6 +315,14 @@ void checkSerial(){
         return;
       }
 
+      if (input.startsWith("airdropEnabled:")) {
+        input.replace("airdropEnabled:", "");
+        airDropEnabled = stringToBool(input);
+        Serial.print("ok\n");
+        resetCommand();
+        return;
+      }
+
       if (input.startsWith("test:")) {
         input.replace("test:", "");
         IsTestCycle=true;
@@ -338,6 +349,18 @@ void checkSerial(){
   }
 }
 
+bool stringToBool(String str) {
+  str.toLowerCase();
+  // Compare the string to "true" and return true if they match
+  if(str=="true"){
+    return true;
+  }
+  if(str == "1"){
+    return true;
+  }
+  return false;
+  
+}
 
 //this method is to run all "other" routines not in the main duty cycles (such as tests)
 void runAux(){
@@ -519,10 +542,14 @@ void onFeedComplete(){
    
     
     delay(FEED_CYCLE_COMPLETE_PRESIGNALDELAY); //this allows some time for the brass to start dropping before generating the airblast
-    digitalWrite(FEED_DONE_SIGNAL, HIGH);
-    delay(FEED_CYCLE_COMPLETE_SIGNALTIME);
-    digitalWrite(FEED_DONE_SIGNAL,LOW);
-    delay(FEED_CYCLE_NOTIFICATION_DELAY);
+
+    if(airDropEnabled)
+    {
+      digitalWrite(FEED_DONE_SIGNAL, HIGH);
+      delay(FEED_CYCLE_COMPLETE_SIGNALTIME);
+      digitalWrite(FEED_DONE_SIGNAL,LOW);
+      delay(FEED_CYCLE_NOTIFICATION_DELAY);
+    }
     Serial.print("done\n");
     //Serial.flush();
     FeedCycleComplete=false;
