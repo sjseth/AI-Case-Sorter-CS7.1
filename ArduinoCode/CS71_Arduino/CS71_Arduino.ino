@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.230725.1 ///
+/// VERSION CS 7.1.231116.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.0 or newer
 
 #include <Wire.h>
@@ -65,8 +65,12 @@
 // If you are getting blurred pictures, increase this value. 
 #define FEED_CYCLE_NOTIFICATION_DELAY 80 
 
+//when airdrop is enabled, this value is used instead of SLOT_DROP_DELAY but does the same thing
+//Usually can be 100 or lower, increase value if brass not clearing the tube before it moves to next slot. 
+#define FEED_CYCLE_COMPLETE_POSTDELAY 50
+
 // number of MS to wait after feedcycle before moving sort arm.
-// Prevents slinging brass. With AirDrop Mod enabled, this can be 100 or lower, if not enabled, set to 400 or more. 
+// Prevents slinging brass. 
 // This gives time for the brass to clear the sort tube before moving the sort arm. 
 #define SLOT_DROP_DELAY 300
 
@@ -74,7 +78,15 @@
 ///END OF USER CONFIGURATIONS ///
 ///DO NOT EDIT BELOW THIS LINE ///
 
+
 bool airDropEnabled = AIR_DROP_ENABLED;
+int feedCycleSignalTime = FEED_CYCLE_COMPLETE_SIGNALTIME;
+int feedCyclePreDelay = FEED_CYCLE_COMPLETE_PRESIGNALDELAY;
+int feedCyclePostDelay = FEED_CYCLE_COMPLETE_POSTDELAY;
+int slotDropDelay = SLOT_DROP_DELAY;
+int dropDelay =  airDropEnabled ? slotDropDelay : feedCyclePostDelay;
+
+
 int feedSpeed = FEED_MOTOR_SPEED; //represents a number between 1-100
 int feedSteps = FEED_STEPS;
 int feedMotorSpeed = 500;//this is default and calculated at runtime. do not change this value
@@ -269,8 +281,20 @@ void checkSerial(){
         Serial.print(",\"SortSteps\":");
         Serial.print(sortSteps);
 
+        Serial.print(",\"SlotDropDelay\":");
+        Serial.print(slotDropDelay);
+
         Serial.print(",\"AirDropEnabled\":");
         Serial.print(airDropEnabled);
+
+        Serial.print(",\"AirDropPostDelay\":");
+        Serial.print(feedCyclePostDelay);
+
+        Serial.print(",\"AirDropPreDelay\":");
+        Serial.print(feedCyclePreDelay);
+
+        Serial.print(",\"AirDropSignalTime\":");
+        Serial.print(feedCycleSignalTime);
 
         Serial.print("}\n");
         resetCommand();
@@ -314,10 +338,39 @@ void checkSerial(){
         resetCommand();
         return;
       }
-
-      if (input.startsWith("airdropEnabled:")) {
-        input.replace("airdropEnabled:", "");
+      if (input.startsWith("slotdropdelay:")) {
+        input.replace("slotdropdelay:", "");
+        slotDropDelay = input.toInt();
+        Serial.print("ok\n");
+        resetCommand();
+        return;
+      }
+      if (input.startsWith("airdropenabled:")) {
+        input.replace("airdropenabled:", "");
         airDropEnabled = stringToBool(input);
+        dropDelay =  airDropEnabled ? slotDropDelay : feedCyclePostDelay;
+        Serial.print("ok\n");
+        resetCommand();
+        return;
+      }
+
+      if (input.startsWith("airdroppostdelay:")) {
+        input.replace("airdroppostdelay:", "");
+        feedCyclePostDelay = input.toInt();
+        Serial.print("ok\n");
+        resetCommand();
+        return;
+      }
+       if (input.startsWith("airdroppredelay:")) {
+        input.replace("airdroppredelay:", "");
+        feedCyclePreDelay = input.toInt();
+        Serial.print("ok\n");
+        resetCommand();
+        return;
+      }
+      if (input.startsWith("airdropdsignalduration:")) {
+        input.replace("airdropdsignalduration:", "");
+        feedCycleSignalTime = input.toInt();
         Serial.print("ok\n");
         resetCommand();
         return;
@@ -416,7 +469,7 @@ void moveSorterToNextPosition(int position){
     sortStepsToNextPositionTracker = sortStepsToNextPosition;
     if(sortStepsToNextPosition !=0){
       theTime = millis();
-       slotDelayCalc = (SLOT_DROP_DELAY - (theTime - timeSinceLastSortMove));
+       slotDelayCalc = (dropDelay - (theTime - timeSinceLastSortMove));
        slotDelayCalc = slotDelayCalc > 0? slotDelayCalc : 1;
        //Serial.println(slotDelayCalc);
       delay(slotDelayCalc);
@@ -541,12 +594,13 @@ void onFeedComplete(){
   if(FeedCycleComplete==true&& IsFeedError==false){
    
     
-    delay(FEED_CYCLE_COMPLETE_PRESIGNALDELAY); //this allows some time for the brass to start dropping before generating the airblast
+   //this allows some time for the brass to start dropping before generating the airblast
 
     if(airDropEnabled)
     {
+      delay(feedCyclePreDelay);
       digitalWrite(FEED_DONE_SIGNAL, HIGH);
-      delay(FEED_CYCLE_COMPLETE_SIGNALTIME);
+      delay(feedCycleSignalTime);
       digitalWrite(FEED_DONE_SIGNAL,LOW);
       delay(FEED_CYCLE_NOTIFICATION_DELAY);
     }
