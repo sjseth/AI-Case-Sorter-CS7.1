@@ -341,6 +341,7 @@ void checkSerial(){
       if (input.startsWith("slotdropdelay:")) {
         input.replace("slotdropdelay:", "");
         slotDropDelay = input.toInt();
+        dropDelay =  airDropEnabled ? slotDropDelay : feedCyclePostDelay;
         Serial.print("ok\n");
         resetCommand();
         return;
@@ -357,6 +358,7 @@ void checkSerial(){
       if (input.startsWith("airdroppostdelay:")) {
         input.replace("airdroppostdelay:", "");
         feedCyclePostDelay = input.toInt();
+        dropDelay =  airDropEnabled ? slotDropDelay : feedCyclePostDelay;
         Serial.print("ok\n");
         resetCommand();
         return;
@@ -602,12 +604,13 @@ void onFeedComplete(){
       digitalWrite(FEED_DONE_SIGNAL, HIGH);
       delay(feedCycleSignalTime);
       digitalWrite(FEED_DONE_SIGNAL,LOW);
-      delay(FEED_CYCLE_NOTIFICATION_DELAY);
+     
     }
+    delay(FEED_CYCLE_NOTIFICATION_DELAY);
     Serial.print("done\n");
     //Serial.flush();
     FeedCycleComplete=false;
-     forceFeed= false;
+    forceFeed= false;
     return;
   }
   
