@@ -100,7 +100,7 @@ int feedMicroSteps = feedSteps * FEED_MICROSTEPS;
 
 const int feedramp = (ACC_FACTOR + (FEED_MOTOR_SPEED /2)) / FEED_ACC_SLOPE;
 const int sortramp = (ACC_FACTOR + (SORT_MOTOR_SPEED /2)) / SORT_ACC_SLOPE;
-const int feedOverTravelSteps = feedMicroSteps - (FEED_OVERSTEP_THRESHOLD * FEED_MICROSTEPS);
+int feedOverTravelSteps = feedMicroSteps - (FEED_OVERSTEP_THRESHOLD * FEED_MICROSTEPS);
 const int feedHomingOffset = FEED_HOMING_OFFSET_STEPS * FEED_MICROSTEPS;
 
 bool FeedScheduled = false;
@@ -334,6 +334,7 @@ void checkSerial(){
         input.replace("feedsteps:", "");
         feedSteps = input.toInt();
         feedMicroSteps = feedSteps * FEED_MICROSTEPS;
+        feedOverTravelSteps = feedMicroSteps - (FEED_OVERSTEP_THRESHOLD * FEED_MICROSTEPS);
         Serial.print("ok\n");
         resetCommand();
         return;
