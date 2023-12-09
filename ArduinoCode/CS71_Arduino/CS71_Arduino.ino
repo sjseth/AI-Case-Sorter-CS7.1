@@ -4,6 +4,7 @@
 #include <Wire.h>
 #include <SoftwareSerial.h>
 
+
 //PIN CONFIGURATIONS
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
 //Stepper controller is set to 16 Microsteps (3 jumpers in place)
@@ -54,20 +55,20 @@
 
 // Used to send signal to add-ons when feed cycle completes (used by airdrop mod). 
 // IF NOT USING MODS, SET TO 0. With Airdrop set to 60-100 (length of the airblast)
-#define FEED_CYCLE_COMPLETE_SIGNALTIME 30 
+#define FEED_CYCLE_COMPLETE_SIGNALTIME 50 
 
 // The amount of time to wait after the feed completes before sending the FEED_CYCLE_COMPLETE SIGNAL
 // IF NOT USING MODS, SET TO 0. with Airdrop set to 30-50 which allows the brass to start falling before sending the blast of air. 
-#define FEED_CYCLE_COMPLETE_PRESIGNALDELAY 0
+#define FEED_CYCLE_COMPLETE_PRESIGNALDELAY 30
 
 // Time in milliseconds to wait before sending "done" response to serialport (allows for everything to stop moving before taking the picture): runs after the feed_cycle_complete signal
 // With AirDrop mod enabled, it needs about 20-30MS. If airdrop is not enabled, it should be closer to 50-70. 
 // If you are getting blurred pictures, increase this value. 
-#define FEED_CYCLE_NOTIFICATION_DELAY 80 
+#define FEED_CYCLE_NOTIFICATION_DELAY 30 
 
 //when airdrop is enabled, this value is used instead of SLOT_DROP_DELAY but does the same thing
 //Usually can be 100 or lower, increase value if brass not clearing the tube before it moves to next slot. 
-#define FEED_CYCLE_COMPLETE_POSTDELAY 50
+#define FEED_CYCLE_COMPLETE_POSTDELAY 0
 
 // number of MS to wait after feedcycle before moving sort arm.
 // Prevents slinging brass. 
@@ -180,6 +181,13 @@ void loop() {
    serialMessenger();
    onFeedComplete();
    runAux();
+
+}
+
+int FreeMem(){
+  extern int __heap_start, *__brkval;
+  int v;
+  return(int) &v - (__brkval ==0 ? (int) &__heap_start : (int) __brkval);
 }
 
 bool commandReady = false;
@@ -206,6 +214,7 @@ void resetCommand(){
 
 void checkSerial(){
   if(FeedCycleInProgress==false && SortInProgress==false && Serial.available()>0){
+   
       //input = Serial.readStringUntil('\n');
        recvWithEndMarker();
        
@@ -400,6 +409,12 @@ void checkSerial(){
         resetCommand();
         return;
       }
+       if (input.startsWith("ping")) {
+        Serial.print(FreeMem());
+        resetCommand();
+        Serial.print(" ok\n");
+        return;
+      }
       resetCommand();
       Serial.print("ok\n");
   }
@@ -474,7 +489,7 @@ void moveSorterToNextPosition(int position){
       theTime = millis();
        slotDelayCalc = (dropDelay - (theTime - timeSinceLastSortMove));
        slotDelayCalc = slotDelayCalc > 0? slotDelayCalc : 1;
-       //Serial.println(slotDelayCalc);
+       Serial.println(slotDelayCalc);
       delay(slotDelayCalc);
     }
     qPos1 = qPos2;
