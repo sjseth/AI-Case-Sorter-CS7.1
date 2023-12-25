@@ -1,5 +1,5 @@
-/// VERSION CS 7.1.231116.1 ///
-/// REQUIRES AI SORTER SOFTWARE VERSION 1.1.0 or newer
+/// VERSION CS 7.1.231224.1 ///
+/// REQUIRES AI SORTER SOFTWARE VERSION 1.1.35 or newer
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -25,7 +25,7 @@
 #define SORT_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
 #define SORT_MICROSTEPS 16 //how many microsteps the controller is configured for. 
 #define SORT_HOMING_SENSOR 11  //connects to the sorter homing sensor
-#define AIR_DROP_ENABLED true //enables airdrop
+#define AIR_DROP_ENABLED false //enables airdrop
 
 //ARDUINO CONFIGURATIONS
 
@@ -64,7 +64,7 @@
 // Time in milliseconds to wait before sending "done" response to serialport (allows for everything to stop moving before taking the picture): runs after the feed_cycle_complete signal
 // With AirDrop mod enabled, it needs about 20-30MS. If airdrop is not enabled, it should be closer to 50-70. 
 // If you are getting blurred pictures, increase this value. 
-#define FEED_CYCLE_NOTIFICATION_DELAY 30 
+#define FEED_CYCLE_NOTIFICATION_DELAY 90 
 
 //when airdrop is enabled, this value is used instead of SLOT_DROP_DELAY but does the same thing
 //Usually can be 100 or lower, increase value if brass not clearing the tube before it moves to next slot. 
@@ -73,19 +73,19 @@
 // number of MS to wait after feedcycle before moving sort arm.
 // Prevents slinging brass. 
 // This gives time for the brass to clear the sort tube before moving the sort arm. 
-#define SLOT_DROP_DELAY 300
+#define SLOT_DROP_DELAY 400
 
 
 ///END OF USER CONFIGURATIONS ///
 ///DO NOT EDIT BELOW THIS LINE ///
 
-
+int notificationDelay = FEED_CYCLE_NOTIFICATION_DELAY;
 bool airDropEnabled = AIR_DROP_ENABLED;
 int feedCycleSignalTime = FEED_CYCLE_COMPLETE_SIGNALTIME;
 int feedCyclePreDelay = FEED_CYCLE_COMPLETE_PRESIGNALDELAY;
 int feedCyclePostDelay = FEED_CYCLE_COMPLETE_POSTDELAY;
 int slotDropDelay = SLOT_DROP_DELAY;
-int dropDelay =  airDropEnabled ? slotDropDelay : feedCyclePostDelay;
+int dropDelay =  airDropEnabled ? feedCyclePostDelay : slotDropDelay;
 
 
 int feedSpeed = FEED_MOTOR_SPEED; //represents a number between 1-100
@@ -142,7 +142,7 @@ unsigned long msgResetTimer;
 void setup() {
   Serial.begin(9600);
   Serial.print("Ready\n");
-  
+  Serial.println(dropDelay);
   setSorterMotorSpeed(SORT_MOTOR_SPEED);
   setFeedMotorSpeed(FEED_MOTOR_SPEED);
 
@@ -290,6 +290,9 @@ void checkSerial(){
         Serial.print(",\"SortSteps\":");
         Serial.print(sortSteps);
 
+        Serial.print(",\"NotificationDelay\":");
+        Serial.print(notificationDelay);
+
         Serial.print(",\"SlotDropDelay\":");
         Serial.print(slotDropDelay);
 
@@ -348,10 +351,17 @@ void checkSerial(){
         resetCommand();
         return;
       }
+      if (input.startsWith("notificationdelay:")) {
+        input.replace("notificationdelay:", "");
+        notificationDelay = input.toInt();
+        Serial.print("ok\n");
+        resetCommand();
+        return;
+      }
       if (input.startsWith("slotdropdelay:")) {
         input.replace("slotdropdelay:", "");
         slotDropDelay = input.toInt();
-        dropDelay =  airDropEnabled ? slotDropDelay : feedCyclePostDelay;
+        dropDelay =  airDropEnabled ? feedCyclePostDelay: slotDropDelay;
         Serial.print("ok\n");
         resetCommand();
         return;
@@ -359,7 +369,7 @@ void checkSerial(){
       if (input.startsWith("airdropenabled:")) {
         input.replace("airdropenabled:", "");
         airDropEnabled = stringToBool(input);
-        dropDelay =  airDropEnabled ? slotDropDelay : feedCyclePostDelay;
+        dropDelay =  airDropEnabled ? feedCyclePostDelay: slotDropDelay;
         Serial.print("ok\n");
         resetCommand();
         return;
@@ -368,7 +378,7 @@ void checkSerial(){
       if (input.startsWith("airdroppostdelay:")) {
         input.replace("airdroppostdelay:", "");
         feedCyclePostDelay = input.toInt();
-        dropDelay =  airDropEnabled ? slotDropDelay : feedCyclePostDelay;
+        dropDelay =  airDropEnabled ? feedCyclePostDelay: slotDropDelay;
         Serial.print("ok\n");
         resetCommand();
         return;
@@ -489,7 +499,11 @@ void moveSorterToNextPosition(int position){
       theTime = millis();
        slotDelayCalc = (dropDelay - (theTime - timeSinceLastSortMove));
        slotDelayCalc = slotDelayCalc > 0? slotDelayCalc : 1;
-       Serial.println(slotDelayCalc);
+       if(slotDelayCalc > dropDelay){
+         slotDelayCalc=dropDelay;
+       }
+
+      // Serial.println(slotDelayCalc);
       delay(slotDelayCalc);
     }
     qPos1 = qPos2;
@@ -622,7 +636,7 @@ void onFeedComplete(){
       digitalWrite(FEED_DONE_SIGNAL,LOW);
      
     }
-    delay(FEED_CYCLE_NOTIFICATION_DELAY);
+    delay(notificationDelay);
     Serial.print("done\n");
     //Serial.flush();
     FeedCycleComplete=false;
