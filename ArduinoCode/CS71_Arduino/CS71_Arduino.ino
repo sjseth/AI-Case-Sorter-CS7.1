@@ -142,7 +142,7 @@ unsigned long msgResetTimer;
 void setup() {
   Serial.begin(9600);
   Serial.print("Ready\n");
-  Serial.println(dropDelay);
+  
   setSorterMotorSpeed(SORT_MOTOR_SPEED);
   setFeedMotorSpeed(FEED_MOTOR_SPEED);
 
