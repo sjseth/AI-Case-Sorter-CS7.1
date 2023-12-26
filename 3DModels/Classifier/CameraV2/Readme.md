@@ -8,3 +8,7 @@ The V2 camera module has a different form factor that the standard module so it 
 
 Please use the [instructions](Camera%20Assembly%20V2.pdf) included in this folder for the camera assembly. 
 
+Here is a link to the Build Video for the V2 Camera:
+https://youtu.be/Iz0gYvVie6w
+
+
