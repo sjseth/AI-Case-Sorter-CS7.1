@@ -1,5 +1,5 @@
-/// VERSION CS 7.1.231225.1 ///
-/// REQUIRES AI SORTER SOFTWARE VERSION 1.1.35 or newer
+/// VERSION CS 7.1.240130.1 ///
+/// REQUIRES AI SORTER SOFTWARE VERSION 1.1.39 or newer
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -102,7 +102,8 @@ int feedMicroSteps = feedSteps * FEED_MICROSTEPS;
 const int feedramp = (ACC_FACTOR + (FEED_MOTOR_SPEED /2)) / FEED_ACC_SLOPE;
 const int sortramp = (ACC_FACTOR + (SORT_MOTOR_SPEED /2)) / SORT_ACC_SLOPE;
 int feedOverTravelSteps = feedMicroSteps - (FEED_OVERSTEP_THRESHOLD * FEED_MICROSTEPS);
-const int feedHomingOffset = FEED_HOMING_OFFSET_STEPS * FEED_MICROSTEPS;
+int feedOffsetSteps = FEED_HOMING_OFFSET_STEPS;
+int feedHomingOffset = feedOffsetSteps * FEED_MICROSTEPS;
 
 bool FeedScheduled = false;
 bool IsFeeding = false;
@@ -308,6 +309,9 @@ void checkSerial(){
         Serial.print(",\"AirDropSignalTime\":");
         Serial.print(feedCycleSignalTime);
 
+        Serial.print(",\"FeedHomingOffset\":");
+        Serial.print(feedOffsetSteps);
+
         Serial.print("}\n");
         resetCommand();
         return;      
@@ -318,6 +322,17 @@ void checkSerial(){
         input.replace("feedspeed:", "");
         feedSpeed = input.toInt();
         setFeedMotorSpeed(feedSpeed);
+        Serial.print("ok\n");
+        resetCommand();
+        return;
+      }
+      //set feed homing offset
+      if (input.startsWith("feedhomingoffset:")) {
+        input.replace("feedhomingoffset:", "");
+        feedOffsetSteps = input.toInt(); //3
+        feedHomingOffset = feedOffsetSteps * FEED_MICROSTEPS; //48
+        FeedHomingOffsetSteps = feedHomingOffset; //48
+
         Serial.print("ok\n");
         resetCommand();
         return;
