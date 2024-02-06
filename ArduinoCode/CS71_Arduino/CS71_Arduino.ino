@@ -1,30 +1,73 @@
 /// VERSION CS 7.1.240130.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.39 or newer
+/// Modified by sabre1911a1 to support BTT SKR Pico board
 
 #include <Wire.h>
-#include <SoftwareSerial.h>
 
+#if defined(ARDUINO_ARCH_RP2040)
+  bool isSKR=true;
+  
+  //#include <TMC2209.h>
+  //#define UART_BAUD 115200
+  
+  //CAMERA FAN
+  #define CAM_FAN_PIN 17 //SKR FAN1 HEADER
+  #define CAM_FAN_DEFAULT_PWM 255 //Fan speed integer between 0 (off) and 255 (full on) - NOT ALL FANS SUPPORT PWM
+  
+  //CAMERA LIGHT
+  #define CAM_LED_PIN 18 //SKR FAN2 HEADER
+  #define CAM_LED_DEFAULT_PWM 1 //Brightness integer between 0 (off) and 255 (full on)
+  
+  //ELECTRONICS ENCLOSURE FAN
+  #define E_FAN_PIN 20 //SKR FAN3 HEADER
+  #define E_FAN_DEFAULT_PWM 255 //Fan speed integer between 0 (off) and 255 (full on) - NOT ALL FANS SUPPORT PWM
+
+  #define FEED_DIRPIN 13 //maps to the DIRECTION signal for the feed motor
+  #define FEED_STEPPIN 14 //maps to the PULSE signal for the feed motor
+  #define FEED_Enable 15 //maps to the enable pin for the FEED MOTOR
+  #define FEED_HOMING_SENSOR 4  //SKR X-STOP HEADER
+  #define FEED_SENSOR 22 //SKR WD-DET HEADER
+  #define FEED_DONE_SIGNAL 0   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop. SKR RASPBERRY PI HEADER, FIFTH 5
+  //#define FEED_RUN_CURRENT 100
+
+  #define SORT_DIRPIN 10 //maps to the DIRECTION signal for the sorter motor
+  #define SORT_STEPPIN 11 //maps to the PULSE signal for the sorter motor
+  #define SORT_Enable 12 //maps to the enable pin for the FEED MOTOR
+  #define SORT_HOMING_SENSOR 3  //SKR Y-STOP HEADER
+  //#define SORT_RUN_CURRENT 60
+  #define SORTER_CHUTE_SEPERATION 10 
+#else
+  bool isSKR=false;
+  
+  #include <SoftwareSerial.h>
+
+  #define FEED_DIRPIN 5 //maps to the DIRECTION signal for the feed motor
+  #define FEED_STEPPIN 2 //maps to the PULSE signal for the feed motor
+  #define FEED_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
+  #define FEED_HOMING_SENSOR 10  //connects to the feed wheel homing sensor
+  #define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
+  #define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop
+  
+  #define SORT_DIRPIN 6 //maps to the DIRECTION signal for the sorter motor
+  #define SORT_STEPPIN 3 //maps to the PULSE signal for the sorter motor
+  #define SORT_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
+  #define SORT_HOMING_SENSOR 11  //connects to the sorter homing sensor
+  #define SORTER_CHUTE_SEPERATION 20 
+#endif
+
+#define SERIAL_BAUD 9600
 
 //PIN CONFIGURATIONS
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
 //Stepper controller is set to 16 Microsteps (3 jumpers in place)
 
-#define FEED_DIRPIN 5 //maps to the DIRECTION signal for the feed motor
-#define FEED_STEPPIN 2 //maps to the PULSE signal for the feed motor
-#define FEED_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
-#define FEED_MICROSTEPS 16  //how many microsteps the controller is configured for. 
-#define FEED_HOMING_SENSOR 10  //connects to the feed wheel homing sensor
-#define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
-#define FEEDSENSOR_ENABLED true //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
+#define FEED_MICROSTEPS 16  //how many microsteps the controller is configured for.
 #define FEEDSENSOR_TYPE 0 // NPN = 0, PNP = 1
-#define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop
-#define FEED_HOMING_ENABLED true //enabled feed homing sensor
+#define FEEDSENSOR_ENABLED true //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
+#define FEED_HOMING_ENABLED true //enabled feed homing sensor 
 
-#define SORT_DIRPIN 6 //maps to the DIRECTION signal for the sorter motor
-#define SORT_STEPPIN 3 //maps to the PULSE signal for the sorter motor
-#define SORT_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
 #define SORT_MICROSTEPS 16 //how many microsteps the controller is configured for. 
-#define SORT_HOMING_SENSOR 11  //connects to the sorter homing sensor
+
 #define AIR_DROP_ENABLED false //enables airdrop
 
 //ARDUINO CONFIGURATIONS
@@ -32,8 +75,6 @@
 //number of steps between chutes. With the 8 and 10 slot attachments, 20 is the default. 
 //If you have customized sorter output drops, you will need to change this setting to meet your needs. 
 //Note there are 200 steps in 1 revolution of the sorter motor. 
-#define SORTER_CHUTE_SEPERATION 20 
-
 
 #define FEED_HOMING_OFFSET_STEPS 3 //additional steps to continue after homing sensor triggered
 #define FEED_STEPS 70  //The amount to travel before starting the homing cycle. Should be less than (80 - FEED_HOMING_OFFSET_STEPS)
@@ -75,10 +116,14 @@
 // This gives time for the brass to clear the sort tube before moving the sort arm. 
 #define SLOT_DROP_DELAY 400
 
-
 ///END OF USER CONFIGURATIONS ///
 ///DO NOT EDIT BELOW THIS LINE ///
 
+const long SERIAL_BAUD_RATE = SERIAL_BAUD;
+//const long UART_BAUD_RATE = UART_BAUD;
+//const uint8_t FEED_RUN_CURRENT_PERCENT = FEED_RUN_CURRENT;
+//const uint8_t SORT_RUN_CURRENT_PERCENT = SORT_RUN_CURRENT;
+//const uint8_t REPLY_DELAY = 10;
 int notificationDelay = FEED_CYCLE_NOTIFICATION_DELAY;
 bool airDropEnabled = AIR_DROP_ENABLED;
 int feedCycleSignalTime = FEED_CYCLE_COMPLETE_SIGNALTIME;
@@ -139,10 +184,39 @@ unsigned long theTime;
 unsigned long timeSinceLastSortMove;
 unsigned long msgResetTimer;
 
+//Hardware serial/UART setup
+//UART Serial2(UART_TX_PIN, UART_RX_PIN, NC, NC);
+//HardwareSerial & serial_stream = Serial2;
+
+//Instantiate motor drivers
+//TMC2209 feed_driver;
+//const TMC2209::SerialAddress SERIAL_ADDRESS_3 = TMC2209::SERIAL_ADDRESS_3;
+//TMC2209 sort_driver;
+//const TMC2209::SerialAddress SERIAL_ADDRESS_0 = TMC2209::SERIAL_ADDRESS_0;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(SERIAL_BAUD_RATE);
+  //Serial2.begin(UART_BAUD_RATE);
   Serial.print("Ready\n");
+
+  //TMC2209::SERIAL_ADDRESS_3 is the UART address for the Extruder driver
+  //TMC2209::SERIAL_ADDRESS_1 is the UART address for the Z driver
+  //TMC2209::SERIAL_ADDRESS_2 is the UART address for the Y driver
+  //TMC2209::SERIAL_ADDRESS_0 is the UART address for the X driver
+
+  //sort_driver.setup(serial_stream, UART_BAUD_RATE, SERIAL_ADDRESS_0);
+  //sort_driver.setReplyDelay(REPLY_DELAY);
+
+  //feed_driver.setup(serial_stream, UART_BAUD_RATE, SERIAL_ADDRESS_3);
+  //feed_driver.setReplyDelay(REPLY_DELAY);
+
+  //feed_driver.setRunCurrent(FEED_RUN_CURRENT_PERCENT);
+  //feed_driver.enableCoolStep();
+  //feed_driver.enable();
+
+  //sort_driver.setRunCurrent(SORT_RUN_CURRENT_PERCENT);
+  //sort_driver.enableCoolStep();
+  //sort_driver.enable();
   
   setSorterMotorSpeed(SORT_MOTOR_SPEED);
   setFeedMotorSpeed(FEED_MOTOR_SPEED);
@@ -155,14 +229,37 @@ void setup() {
   pinMode(SORT_STEPPIN, OUTPUT);
 
   pinMode(FEED_DONE_SIGNAL, OUTPUT);
-  pinMode(FEED_HOMING_SENSOR, INPUT);
-  pinMode(SORT_HOMING_SENSOR, INPUT);
+  if (isSKR==true){ //Set these pins with pullups if the board is the SKR Pico
+    pinMode(FEED_HOMING_SENSOR, INPUT_PULLUP);
+    pinMode(SORT_HOMING_SENSOR, INPUT_PULLUP);
+  }
+  else{
+    pinMode(FEED_HOMING_SENSOR, INPUT);
+    pinMode(SORT_HOMING_SENSOR, INPUT);
+  }
   pinMode(FEED_SENSOR, INPUT);
 
+  if (isSKR==true){ //Set these pins the opposite if the board is the SKR Pico
+    digitalWrite(FEED_Enable, LOW);
+    digitalWrite(SORT_Enable, LOW);
+    digitalWrite(FEED_DIRPIN, HIGH);
+  }
+  else {
+    digitalWrite(FEED_Enable, HIGH);
+    digitalWrite(SORT_Enable, HIGH);
+    digitalWrite(FEED_DIRPIN, LOW);
+  }
 
-  digitalWrite(FEED_Enable, HIGH);
-  digitalWrite(SORT_Enable, HIGH);
-  digitalWrite(FEED_DIRPIN, LOW);
+//Only include this in the sketch compilation if the board is an SKR Pico
+#if defined(ARDUINO_ARCH_RP2040) 
+  pinMode(CAM_FAN_PIN, OUTPUT);
+  pinMode(CAM_LED_PIN, OUTPUT);
+  pinMode(E_FAN_PIN, OUTPUT);
+
+  analogWrite(CAM_FAN_PIN, CAM_FAN_DEFAULT_PWM);
+  analogWrite(CAM_LED_PIN, CAM_LED_DEFAULT_PWM);
+  analogWrite(E_FAN_PIN, E_FAN_DEFAULT_PWM);
+#endif
 
   IsFeedHoming=true;
   IsSortHoming=true;
@@ -185,11 +282,14 @@ void loop() {
 
 }
 
-int FreeMem(){
-  extern int __heap_start, *__brkval;
-  int v;
-  return(int) &v - (__brkval ==0 ? (int) &__heap_start : (int) __brkval);
-}
+//Only include this in the sketch compilation if the board is NOT an SKR Pico
+#if !defined(ARDUINO_ARCH_RP2040)
+  int FreeMem(){
+    extern int __heap_start, *__brkval;
+    int v;
+    return(int) &v - (__brkval ==0 ? (int) &__heap_start : (int) __brkval);
+  }
+#endif
 
 bool commandReady = false;
 char endMarker = '\n';
@@ -435,11 +535,42 @@ void checkSerial(){
         return;
       }
        if (input.startsWith("ping")) {
-        Serial.print(FreeMem());
+        //Only include this in the sketch compilation if the board is NOT an SKR Pico
+        #if !defined(ARDUINO_ARCH_RP2040)
+          Serial.print(FreeMem());
+        #endif
         resetCommand();
         Serial.print(" ok\n");
         return;
       }
+
+      //Only include these if the board is an SKR Pico
+      #if defined(ARDUINO_ARCH_RP2040)
+        //Added for SKR Pico
+        if (input.startsWith("camfan:")) {
+            input.replace("camfan:", "");
+            pwmCamFan(input.toInt());
+            resetCommand();
+          return;
+        }
+
+        //Added for SKR Pico
+        if (input.startsWith("camlight:")) {
+            input.replace("camlight:", "");
+            pwmCamLight(input.toInt());
+            resetCommand();
+          return;
+        }
+
+        //Added for SKR Pico
+        if (input.startsWith("efan:")) {
+            input.replace("efan:", "");
+            pwmEFan(input.toInt());
+            resetCommand();
+          return;
+        }  
+      #endif
+
       resetCommand();
       Serial.print("ok\n");
   }
@@ -505,6 +636,41 @@ void runAux(){
   }
 }
 
+//Only include these functions if the board is an SKR Pico
+#if defined(ARDUINO_ARCH_RP2040)
+//Added for SKR Pico
+  void pwmCamFan(int pwmValue){
+      if ((pwmValue >= 0) && (pwmValue <= 255)){
+        analogWrite(CAM_FAN_PIN, pwmValue);
+        Serial.println("ok");
+      }
+      else{
+        Serial.println("invalid PWM input");
+      }
+  }
+
+  //Added for SKR Pico
+  void pwmCamLight(int pwmValue){
+      if ((pwmValue >= 0) && (pwmValue <= 255)){
+        analogWrite(CAM_LED_PIN, pwmValue);
+        Serial.println("ok");
+      }
+      else{
+        Serial.println("invalid PWM input");
+      }
+  }
+
+  //Added for SKR Pico
+  void pwmEFan(int pwmValue){
+      if ((pwmValue >= 0) && (pwmValue <= 255)){
+        analogWrite(E_FAN_PIN, pwmValue);
+        Serial.println("ok");
+      }
+      else{
+        Serial.println("invalid PWM input");
+      }
+  }
+#endif
 
 void moveSorterToNextPosition(int position){
     sortToSlot=position;
@@ -602,9 +768,20 @@ void setAccSortDelay(){
 void stepSortMotor(bool forward){
     
      if(forward==true){
-       digitalWrite(SORT_DIRPIN, HIGH);
-     }else{
-      digitalWrite(SORT_DIRPIN, LOW);
+      if (isSKR==true){
+        digitalWrite(SORT_DIRPIN, LOW);
+      }
+      else {
+        digitalWrite(SORT_DIRPIN, HIGH);
+      }
+     }
+     else{
+      if (isSKR==true){
+        digitalWrite(SORT_DIRPIN, HIGH);
+      }
+      else {
+        digitalWrite(SORT_DIRPIN, LOW);
+      }
     }
     digitalWrite(SORT_STEPPIN, HIGH);
     delayMicroseconds(1);  //pulse width
