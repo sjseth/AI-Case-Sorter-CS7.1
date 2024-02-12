@@ -1,6 +1,6 @@
 # Long Arm Hex Sort
 
-These resources were created for those who would like to have more slots than the standard 8 provided.  By extending the arm length, we swing in a wider radius thus creating more room for buckets or containers. To make this possible, I had to change the geometry of the sort tube to have an Hex outer contour which allows it to be printed on its side. This also has the effect of aligning the print lines with the direction the brass flows so it provides improved drop performance.
+These resources were created for those who would like to have more slots than the standard 8 provided.  By extending the arm length, we swing in a wider radius thus creating more room for buckets or containers. To make this possible, I had to change the geometry of the sort tube to have a hexagon outer contour which allows it to be printed on its side. This also has the effect of aligning the print lines with the direction the brass flows so it provides improved drop performance.
 
 To get started, you need to print all 3 resources
 
