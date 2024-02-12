@@ -6,9 +6,8 @@
 
 #if defined(ARDUINO_ARCH_RP2040)
   bool isSKR=true;
-  
+    
   //#include <TMC2209.h>
-  //#define UART_BAUD 115200
   
   //CAMERA FAN
   #define CAM_FAN_PIN 17 //SKR FAN1 HEADER
@@ -28,6 +27,7 @@
   #define FEED_HOMING_SENSOR 4  //SKR X-STOP HEADER
   #define FEED_SENSOR 22 //SKR WD-DET HEADER
   #define FEED_DONE_SIGNAL 0   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop. SKR RASPBERRY PI HEADER, FIFTH 5
+  #define FEED_MICROSTEPS 16  //how many microsteps the controller is configured for.
   //#define FEED_RUN_CURRENT 100
 
   #define SORT_DIRPIN 10 //maps to the DIRECTION signal for the sorter motor
@@ -35,7 +35,8 @@
   #define SORT_Enable 12 //maps to the enable pin for the FEED MOTOR
   #define SORT_HOMING_SENSOR 3  //SKR Y-STOP HEADER
   //#define SORT_RUN_CURRENT 60
-  #define SORTER_CHUTE_SEPERATION 10 
+  #define SORT_MICROSTEPS 8 //how many microsteps the controller is configured for. 
+  #define SORTER_CHUTE_SEPERATION 20 
 #else
   bool isSKR=false;
   
@@ -47,11 +48,13 @@
   #define FEED_HOMING_SENSOR 10  //connects to the feed wheel homing sensor
   #define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
   #define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop
+  #define FEED_MICROSTEPS 16  //how many microsteps the controller is configured for.
   
   #define SORT_DIRPIN 6 //maps to the DIRECTION signal for the sorter motor
   #define SORT_STEPPIN 3 //maps to the PULSE signal for the sorter motor
   #define SORT_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
   #define SORT_HOMING_SENSOR 11  //connects to the sorter homing sensor
+  #define SORT_MICROSTEPS 16 //how many microsteps the controller is configured for. 
   #define SORTER_CHUTE_SEPERATION 20 
 #endif
 
@@ -61,13 +64,9 @@
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
 //Stepper controller is set to 16 Microsteps (3 jumpers in place)
 
-#define FEED_MICROSTEPS 16  //how many microsteps the controller is configured for.
 #define FEEDSENSOR_TYPE 0 // NPN = 0, PNP = 1
 #define FEEDSENSOR_ENABLED true //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
 #define FEED_HOMING_ENABLED true //enabled feed homing sensor 
-
-#define SORT_MICROSTEPS 16 //how many microsteps the controller is configured for. 
-
 #define AIR_DROP_ENABLED false //enables airdrop
 
 //ARDUINO CONFIGURATIONS
@@ -96,16 +95,16 @@
 
 // Used to send signal to add-ons when feed cycle completes (used by airdrop mod). 
 // IF NOT USING MODS, SET TO 0. With Airdrop set to 60-100 (length of the airblast)
-#define FEED_CYCLE_COMPLETE_SIGNALTIME 50 
+#define FEED_CYCLE_COMPLETE_SIGNALTIME 0 
 
 // The amount of time to wait after the feed completes before sending the FEED_CYCLE_COMPLETE SIGNAL
 // IF NOT USING MODS, SET TO 0. with Airdrop set to 30-50 which allows the brass to start falling before sending the blast of air. 
-#define FEED_CYCLE_COMPLETE_PRESIGNALDELAY 30
+#define FEED_CYCLE_COMPLETE_PRESIGNALDELAY 0
 
 // Time in milliseconds to wait before sending "done" response to serialport (allows for everything to stop moving before taking the picture): runs after the feed_cycle_complete signal
 // With AirDrop mod enabled, it needs about 20-30MS. If airdrop is not enabled, it should be closer to 50-70. 
 // If you are getting blurred pictures, increase this value. 
-#define FEED_CYCLE_NOTIFICATION_DELAY 90 
+#define FEED_CYCLE_NOTIFICATION_DELAY 60 
 
 //when airdrop is enabled, this value is used instead of SLOT_DROP_DELAY but does the same thing
 //Usually can be 100 or lower, increase value if brass not clearing the tube before it moves to next slot. 
@@ -197,8 +196,7 @@ unsigned long msgResetTimer;
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
   //Serial2.begin(UART_BAUD_RATE);
-  Serial.print("Ready\n");
-
+  
   //TMC2209::SERIAL_ADDRESS_3 is the UART address for the Extruder driver
   //TMC2209::SERIAL_ADDRESS_1 is the UART address for the Z driver
   //TMC2209::SERIAL_ADDRESS_2 is the UART address for the Y driver
@@ -264,6 +262,12 @@ void setup() {
   IsFeedHoming=true;
   IsSortHoming=true;
   msgResetTimer = millis();
+
+while (!Serial) {
+  //Wait until Serial is ready
+}
+Serial.print("Ready\n");
+
 }
 
 
@@ -315,7 +319,7 @@ void resetCommand(){
 
 void checkSerial(){
   if(FeedCycleInProgress==false && SortInProgress==false && Serial.available()>0){
-   
+
       //input = Serial.readStringUntil('\n');
        recvWithEndMarker();
        
