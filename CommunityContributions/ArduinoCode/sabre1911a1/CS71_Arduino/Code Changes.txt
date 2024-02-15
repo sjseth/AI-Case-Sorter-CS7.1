@@ -1,0 +1,145 @@
+Code changes from official CS71_Arduino.ino
+For SKR Pico Build
+02-15-2024
+
+From top to bottom...
+-------------------------------------------
+
+REMOVE the #include <SoftwareSerial.h> line
+
+ADD to the top of the code where all the other "#define" statements are:
+
+  //CAMERA FAN
+  #define CAM_FAN_PIN 17 //SKR FAN1 HEADER
+  #define CAM_FAN_DEFAULT_PWM 255 //Fan speed integer between 0 (off) and 255 (full on) - NOT ALL FANS SUPPORT PWM
+  
+  //CAMERA LIGHT
+  #define CAM_LED_PIN 18 //SKR FAN2 HEADER
+  #define CAM_LED_DEFAULT_PWM 100 //Brightness integer between 0 (off) and 255 (full on)
+  
+  //ELECTRONICS ENCLOSURE FAN
+  #define E_FAN_PIN 20 //SKR FAN3 HEADER
+  #define E_FAN_DEFAULT_PWM 255 //Fan speed integer between 0 (off) and 255 (full on) - NOT ALL FANS SUPPORT PWM
+  
+MODIFY the following lines:
+  FROM									TO
+  ----									--	
+  #define FEED_DIRPIN 5					#define FEED_DIRPIN 13
+  #define FEED_STEPPIN 2				#define FEED_STEPPIN 14
+  #define FEED_Enable 8 				#define FEED_Enable 15 
+  #define FEED_HOMING_SENSOR 10			#define FEED_HOMING_SENSOR 4
+  #define FEED_SENSOR 9					#define FEED_SENSOR 22
+  #define FEED_DONE_SIGNAL 12			#define FEED_DONE_SIGNAL 0
+
+  #define SORT_DIRPIN 6					#define SORT_DIRPIN 10
+  #define SORT_STEPPIN 3				#define SORT_STEPPIN 11
+  #define SORT_Enable 8					#define SORT_Enable 12
+  #define SORT_HOMING_SENSOR 11			#define SORT_HOMING_SENSOR 3
+  #define SORT_MICROSTEPS 16			#define SORT_MICROSTEPS 8
+
+In the VOID SETUP() {} section:
+
+  REMOVE the "Serial.print("Ready\n");" line
+
+  MODIFY the following lines:
+    FROM									TO
+	----									--
+	pinMode(FEED_HOMING_SENSOR, INPUT);		pinMode(FEED_HOMING_SENSOR, INPUT_PULLUP);
+    pinMode(SORT_HOMING_SENSOR, INPUT);		pinMode(SORT_HOMING_SENSOR, INPUT_PULLUP);
+	digitalWrite(FEED_Enable, HIGH);		digitalWrite(FEED_Enable, LOW);
+    digitalWrite(SORT_Enable, HIGH);		digitalWrite(SORT_Enable, LOW);
+    digitalWrite(FEED_DIRPIN, LOW);			digitalWrite(FEED_DIRPIN, HIGH);
+
+  ADD the following lines:
+    pinMode(CAM_FAN_PIN, OUTPUT);
+    pinMode(CAM_LED_PIN, OUTPUT);
+    pinMode(E_FAN_PIN, OUTPUT);
+
+    analogWrite(CAM_FAN_PIN, CAM_FAN_DEFAULT_PWM);
+    analogWrite(CAM_LED_PIN, CAM_LED_DEFAULT_PWM);
+    analogWrite(E_FAN_PIN, E_FAN_DEFAULT_PWM);
+
+	while (!Serial) {
+	  //Wait until Serial is ready
+	}
+    
+	Serial.print("Ready\n");
+
+REMOVE this whole section:
+
+  int FreeMem(){
+    extern int __heap_start, *__brkval;
+    int v;
+    return(int) &v - (__brkval ==0 ? (int) &__heap_start : (int) __brkval);
+  }
+  
+In the void checkSerial(){} function:
+
+  In the if (input.startsWith("ping")) {} statement:
+    REMOVE the following line:
+	  Serial.print(FreeMem());
+
+  Immediately after the if (input.startsWith("ping")) {} statement, ADD the following statements:
+    if (input.startsWith("camfan:")) {
+      input.replace("camfan:", "");
+      pwmCamFan(input.toInt());
+      resetCommand();
+      return;
+    }
+
+    if (input.startsWith("camlight:")) {
+      input.replace("camlight:", "");
+      pwmCamLight(input.toInt());
+      resetCommand();
+      return;
+    }
+
+    if (input.startsWith("efan:")) {
+      input.replace("efan:", "");
+      pwmEFan(input.toInt());
+      resetCommand();
+      return;
+    }
+	
+Somewhere after the void checkSerial(){} function, ADD the following functions:
+
+  void pwmCamFan(int pwmValue){
+      if ((pwmValue >= 0) && (pwmValue <= 255)){
+        analogWrite(CAM_FAN_PIN, pwmValue);
+        Serial.println("ok");
+      }
+      else{
+        Serial.println("invalid PWM input");
+      }
+  }
+
+  void pwmCamLight(int pwmValue){
+      if ((pwmValue >= 0) && (pwmValue <= 255)){
+        analogWrite(CAM_LED_PIN, pwmValue);
+        Serial.println("ok");
+      }
+      else{
+        Serial.println("invalid PWM input");
+      }
+  }
+
+  void pwmEFan(int pwmValue){
+      if ((pwmValue >= 0) && (pwmValue <= 255)){
+        analogWrite(E_FAN_PIN, pwmValue);
+        Serial.println("ok");
+      }
+      else{
+        Serial.println("invalid PWM input");
+      }
+  }
+
+In the void stepSortMotor(bool forward){} function, MODIFY the following statements:
+  FROM										TO
+  ----										--
+  if(forward==true){						if(forward==true){
+    digitalWrite(SORT_DIRPIN, HIGH);		  digitalWrite(SORT_DIRPIN, LOW);
+  }											}
+  
+  else{										else{
+	digitalWrite(SORT_DIRPIN, LOW);			  digitalWrite(SORT_DIRPIN, HIGH);
+  }											}
