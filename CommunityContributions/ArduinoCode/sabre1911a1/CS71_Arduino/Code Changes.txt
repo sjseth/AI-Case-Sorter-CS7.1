@@ -22,18 +22,18 @@ ADD to the top of the code where all the other "#define" statements are:
   #define E_FAN_DEFAULT_PWM 255 //Fan speed integer between 0 (off) and 255 (full on) - NOT ALL FANS SUPPORT PWM
   
 MODIFY the following lines:
-  FROM									TO
-  ----									--	
-  #define FEED_DIRPIN 5					#define FEED_DIRPIN 13
-  #define FEED_STEPPIN 2				#define FEED_STEPPIN 14
-  #define FEED_Enable 8 				#define FEED_Enable 15 
+  FROM						TO
+  ----						--	
+  #define FEED_DIRPIN 5				#define FEED_DIRPIN 13
+  #define FEED_STEPPIN 				#define FEED_STEPPIN 14
+  #define FEED_Enable 8				#define FEED_Enable 15 
   #define FEED_HOMING_SENSOR 10			#define FEED_HOMING_SENSOR 4
-  #define FEED_SENSOR 9					#define FEED_SENSOR 22
+  #define FEED_SENSOR				#define FEED_SENSOR 22
   #define FEED_DONE_SIGNAL 12			#define FEED_DONE_SIGNAL 0
 
-  #define SORT_DIRPIN 6					#define SORT_DIRPIN 10
-  #define SORT_STEPPIN 3				#define SORT_STEPPIN 11
-  #define SORT_Enable 8					#define SORT_Enable 12
+  #define SORT_DIRPIN 6				#define SORT_DIRPIN 10
+  #define SORT_STEPPIN 3			#define SORT_STEPPIN 11
+  #define SORT_Enable 8				#define SORT_Enable 12
   #define SORT_HOMING_SENSOR 11			#define SORT_HOMING_SENSOR 3
   #define SORT_MICROSTEPS 16			#define SORT_MICROSTEPS 8
 
@@ -42,13 +42,13 @@ In the VOID SETUP() {} section:
   REMOVE the "Serial.print("Ready\n");" line
 
   MODIFY the following lines:
-    FROM									TO
-	----									--
-	pinMode(FEED_HOMING_SENSOR, INPUT);		pinMode(FEED_HOMING_SENSOR, INPUT_PULLUP);
+    FROM					TO
+    ----					--
+    pinMode(FEED_HOMING_SENSOR, INPUT);		pinMode(FEED_HOMING_SENSOR, INPUT_PULLUP);
     pinMode(SORT_HOMING_SENSOR, INPUT);		pinMode(SORT_HOMING_SENSOR, INPUT_PULLUP);
-	digitalWrite(FEED_Enable, HIGH);		digitalWrite(FEED_Enable, LOW);
+    digitalWrite(FEED_Enable, HIGH);		digitalWrite(FEED_Enable, LOW);
     digitalWrite(SORT_Enable, HIGH);		digitalWrite(SORT_Enable, LOW);
-    digitalWrite(FEED_DIRPIN, LOW);			digitalWrite(FEED_DIRPIN, HIGH);
+    digitalWrite(FEED_DIRPIN, LOW);		digitalWrite(FEED_DIRPIN, HIGH);
 
   ADD the following lines:
     pinMode(CAM_FAN_PIN, OUTPUT);
@@ -134,12 +134,12 @@ Somewhere after the void checkSerial(){} function, ADD the following functions:
   }
 
 In the void stepSortMotor(bool forward){} function, MODIFY the following statements:
-  FROM										TO
-  ----										--
-  if(forward==true){						if(forward==true){
+  FROM						TO
+  ----						--
+  if(forward==true){				if(forward==true){
     digitalWrite(SORT_DIRPIN, HIGH);		  digitalWrite(SORT_DIRPIN, LOW);
-  }											}
+  }						}
   
-  else{										else{
-	digitalWrite(SORT_DIRPIN, LOW);			  digitalWrite(SORT_DIRPIN, HIGH);
-  }											}
+  else{						else{
+	digitalWrite(SORT_DIRPIN, LOW);		  digitalWrite(SORT_DIRPIN, HIGH);
+  }						}
