@@ -1,0 +1,2 @@
+# CS7.1 Mods
+This folder contains the resources for each of the "approved" mods. Mods have generally been kept in the community folder, but it makes them difficult to find so I am keeping a copy of them here to make it easier for future builders.  
