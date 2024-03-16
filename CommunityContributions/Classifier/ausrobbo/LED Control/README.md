@@ -4,7 +4,7 @@ This change removes the external dimmer from the electronics and replaces it wit
 
 ## Install Process
 
-This change uses the hardware PWM control from the Arduino UNO.  There are only a few PINs that support PWM and we need to move the Feed Sensor (brass proximity sensor) from PIN 9 (x+) to PIN 13 (Spin DIR) on the CNC Shield.
+This change uses the hardware PWM control from the Arduino UNO.  There are only a few PINs that support PWM and we need to move the Feed Sensor (brass proximity sensor) from PIN 9 (X+) to PIN 13 (Spin DIR) on the CNC Shield.
 
 DO NOT upload the firmware until you have made the hardware change!
 
@@ -24,8 +24,8 @@ Note: If you built the AirDrop mod, you would have purchases a 5 pack of these M
 
 4.  Remove the +5V and Gnd from the Dimmer and connect them to the VIN+ and VIN- of the MOSFET switch.
 
-5.  Remove the two output wires from the Dimmer module to the camera LEDs. 
-	One of these should have a resistor - KEEP the resistor.  If you followed the original instructions, the resistor is in series with the Gnd (-ve) connection to the LEDs.  Connect this wire to the Vout- on the MOSFET switch.  Connect the +5V wire to the Vout+ on the MOSFET switch.
+5.  Remove the two output wires from the Dimmer module to the camera LEDs. One of these should have a resistor - KEEP the resistor. If you followed the original instructions, the resistor is in series with the Gnd (-ve) connection to the LEDs.
+c.	Connect this wire to the Vout- on the MOSFET switch.  Connect the +5V wire to the Vout+ on the MOSFET switch.
 
 3.  Remove the dimmer (no longer required).
 
@@ -41,12 +41,9 @@ Note: If you built the AirDrop mod, you would have purchases a 5 pack of these M
 
 ### New Serial Commands
 
-1.  getconfig 
-    Will return all the configuration parameters, including the new cameraLEDLevel.
+1.  getconfig - returns all the configuration parameters, including the new cameraLEDLevel.
 
-2.  cameraledlevel:x
-	Sets the camera brightness to x, where x is 0-255.
-	The console will reply with the percentage level set.
+2.  cameraledlevel:x - 	sets the camera brightness to x, where x is 0-255.  The console will reply with the percentage level set.
 	
 ## Debugging
 
