@@ -1,0 +1,45 @@
+17c17
+< #define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
+---
+> #define FEED_SENSOR 13 // (moved to Spin Direction pin) the proximity sensor under the feed wheel 
+77a78,80
+> // CAMERA LED DIMMER VIA ARDUINO
+> #define CAMERA_LED 9              // Timer 1A output to control LED for camera light
+> #define CAMERA_LED_LEVEL  78      // 0-255 0 = off, 255 = full on 78 is a good start with 1k resistor.
+141a145,146
+> // Camera LED Mod
+> int cameraLEDLevel = CAMERA_LED_LEVEL; 
+161a167,169
+>   // Camera LED Mod
+>   pinMode(CAMERA_LED, OUTPUT);
+>   adjustCameraLED(CAMERA_LED_LEVEL);
+314a323,326
+>        // Camera LED Mod
+>         Serial.print(",\"CameraLEDLevel\":");
+>         Serial.print(cameraLEDLevel);
+> 
+414a427,437
+>       
+>       // Camera LED Mod
+>       if (input.startsWith("cameraledlevel:")) {
+>         input.replace("cameraledlevel:", "");
+>         adjustCameraLED(input.toInt() );
+>         Serial.print("LED: ");
+>         Serial.print((float)cameraLEDLevel/255.0*100.0);
+>         Serial.print("%\n");
+>         resetCommand();
+>         return;
+>       }
+459a483,494
+> 
+> // Camera LED Mod
+> void adjustCameraLED(int level)
+> {
+>   // Trim to acceptable values
+>   level = level > 255 ? 255: level;
+>   level = level < 0 ? 0 : level;
+> 
+>   analogWrite(CAMERA_LED, level);
+>   cameraLEDLevel = level;
+> }
+> 
