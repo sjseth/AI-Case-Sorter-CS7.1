@@ -9,6 +9,19 @@
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
 //Stepper controller is set to 16 Microsteps (3 jumpers in place)
 
+#define UseDgitalPWM false //if you have configured your hardware for digital PWM, set this to true. See: https://github.com/sjseth/AI-Case-Sorter-CS7.1/tree/main/CommunityContributions/ArduinoCode/ausrobbo/LED%20Control
+
+#if UseDgitalPWM == false 
+  #define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
+  #define CAMERA_LED_PWM 13 //NOT USED
+#else
+  #define FEED_SENSOR 12 //the proximity sensor under the feed wheel 
+  #define CAMERA_LED_PWM 9 //the output pin for the digital PWM 
+#endif
+
+#define CAMERA_LED_LEVEL  78 //camera brightness if using digital PWM, otherwise ignored 
+
+
 #define FEED_DIRPIN 5 //maps to the DIRECTION signal for the feed motor
 #define FEED_STEPPIN 2 //maps to the PULSE signal for the feed motor
 
@@ -80,6 +93,7 @@
 
 ///END OF USER CONFIGURATIONS ///
 ///DO NOT EDIT BELOW THIS LINE ///
+int cameraLEDLevel = CAMERA_LED_LEVEL; 
 
 int notificationDelay = FEED_CYCLE_NOTIFICATION_DELAY;
 bool airDropEnabled = AIR_DROP_ENABLED;
@@ -162,6 +176,9 @@ void setup() {
   pinMode(FEED_HOMING_SENSOR, INPUT);
   pinMode(SORT_HOMING_SENSOR, INPUT);
   pinMode(FEED_SENSOR, INPUT);
+  pinMode(CAMERA_LED_PWM, OUTPUT);
+  
+  adjustCameraLED(cameraLEDLevel);
 
 
   digitalWrite(MOTOR_Enable, LOW);
@@ -319,6 +336,10 @@ void checkSerial(){
         Serial.print(",\"AutoMotorStandbyTimeout\":");
         Serial.print(autoMotorStandbyTimeout);
 
+        Serial.print(",\"CameraLEDLevel\":");
+        Serial.print(cameraLEDLevel);
+
+   
         Serial.print("}\n");
         resetCommand();
         return;      
@@ -427,6 +448,16 @@ void checkSerial(){
         resetCommand();
         return;
       }
+      if (input.startsWith("cameraledlevel:")) {
+         input.replace("cameraledlevel:", "");
+         adjustCameraLED(input.toInt() );
+         //Serial.print("LED: ");
+         //Serial.print((float)cameraLEDLevel/255.0*100.0);
+         //Serial.print("%\n");
+         Serial.print("ok\n");
+         resetCommand();
+         return;
+       }
 
       if (input.startsWith("test:")) {
         input.replace("test:", "");
@@ -449,6 +480,9 @@ void checkSerial(){
         resetCommand();
         return;
       }
+     
+
+
        if (input.startsWith("ping")) {
         Serial.print(FreeMem());
         resetCommand();
@@ -874,3 +908,14 @@ void MotorStandByCheck(){
   if(theTime - timeSinceLastMotorMove > (autoMotorStandbyTimeout*1000) ) 
      digitalWrite(MOTOR_Enable, HIGH);
 }
+
+void adjustCameraLED(int level)
+ {
+   // Trim to acceptable values
+   level = level  255 ? 255: level;
+   level = level < 0 ? 0 : level;
+ 
+   analogWrite(CAMERA_LED, level);
+   cameraLEDLevel = level;
+ }
+
