@@ -176,13 +176,13 @@ void setup() {
   pinMode(FEED_HOMING_SENSOR, INPUT);
   pinMode(SORT_HOMING_SENSOR, INPUT);
   pinMode(FEED_SENSOR, INPUT);
-  pinMode(CAMERA_LED_PWM, OUTPUT);
-  
-  adjustCameraLED(cameraLEDLevel);
 
+  #if UseDgitalPWM == true 
+    pinMode(CAMERA_LED_PWM, OUTPUT);
+    adjustCameraLED(cameraLEDLevel);
+  #endif
 
   digitalWrite(MOTOR_Enable, LOW);
-
   digitalWrite(FEED_DIRPIN, LOW);
 
   IsFeedHoming=true;
@@ -336,9 +336,10 @@ void checkSerial(){
         Serial.print(",\"AutoMotorStandbyTimeout\":");
         Serial.print(autoMotorStandbyTimeout);
 
-        Serial.print(",\"CameraLEDLevel\":");
-        Serial.print(cameraLEDLevel);
-
+        #if UseDgitalPWM == true 
+                Serial.print(",\"CameraLEDLevel\":");
+                Serial.print(cameraLEDLevel);
+        #endif
    
         Serial.print("}\n");
         resetCommand();
@@ -912,10 +913,10 @@ void MotorStandByCheck(){
 void adjustCameraLED(int level)
  {
    // Trim to acceptable values
-   level = level  255 ? 255: level;
+   level > 255 ? 255: level;
    level = level < 0 ? 0 : level;
  
-   analogWrite(CAMERA_LED, level);
+   analogWrite(CAMERA_LED_PWM, level);
    cameraLEDLevel = level;
  }
 
