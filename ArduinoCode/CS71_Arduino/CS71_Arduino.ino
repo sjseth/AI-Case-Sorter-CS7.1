@@ -9,13 +9,13 @@
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
 //Stepper controller is set to 16 Microsteps (3 jumpers in place)
 
-#define UseDgitalPWM false //if you have configured your hardware for digital PWM, set this to true. See: https://github.com/sjseth/AI-Case-Sorter-CS7.1/tree/main/CommunityContributions/ArduinoCode/ausrobbo/LED%20Control
+#define UseArduinoPWMDimmer false //if you have configured your hardware for to use arduino PWM dimmer for light control, set this to true. See: https://github.com/sjseth/AI-Case-Sorter-CS7.1/tree/main/CommunityContributions/ArduinoCode/ausrobbo/LED%20Control
 
-#if UseDgitalPWM == false 
+#if UseArduinoPWMDimmer == false 
   #define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
   #define CAMERA_LED_PWM 13 //NOT USED
 #else
-  #define FEED_SENSOR 12 //the proximity sensor under the feed wheel 
+  #define FEED_SENSOR 13 //the proximity sensor under the feed wheel 
   #define CAMERA_LED_PWM 9 //the output pin for the digital PWM 
 #endif
 
@@ -177,7 +177,7 @@ void setup() {
   pinMode(SORT_HOMING_SENSOR, INPUT);
   pinMode(FEED_SENSOR, INPUT);
 
-  #if UseDgitalPWM == true 
+  #if UseArduinoPWMDimmer == true 
     pinMode(CAMERA_LED_PWM, OUTPUT);
     adjustCameraLED(cameraLEDLevel);
   #endif
@@ -336,7 +336,7 @@ void checkSerial(){
         Serial.print(",\"AutoMotorStandbyTimeout\":");
         Serial.print(autoMotorStandbyTimeout);
 
-        #if UseDgitalPWM == true 
+        #if UseArduinoPWMDimmer == true 
                 Serial.print(",\"CameraLEDLevel\":");
                 Serial.print(cameraLEDLevel);
         #endif
