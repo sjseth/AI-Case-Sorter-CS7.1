@@ -9,7 +9,7 @@
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
 //Stepper controller is set to 16 Microsteps (3 jumpers in place)
 
-#define UseArduinoPWMDimmer true //if you have configured your hardware for to use arduino PWM dimmer for light control, set this to true. See: https://github.com/sjseth/AI-Case-Sorter-CS7.1/tree/main/CommunityContributions/ArduinoCode/ausrobbo/LED%20Control
+#define UseArduinoPWMDimmer false //if you have configured your hardware for to use arduino PWM dimmer for light control, set this to true. See: https://github.com/sjseth/AI-Case-Sorter-CS7.1/tree/main/CommunityContributions/ArduinoCode/ausrobbo/LED%20Control
 
 #if UseArduinoPWMDimmer == false 
   #define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
