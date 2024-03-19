@@ -102,7 +102,7 @@ int feedCyclePostDelay = FEED_CYCLE_COMPLETE_POSTDELAY;
 int slotDropDelay = SLOT_DROP_DELAY;
 int dropDelay =  airDropEnabled ? feedCyclePostDelay : slotDropDelay;
 
-int autoMotorStandbyTimeout = AUTO_MOTORSTANDBY_TIMEOUT;
+long autoMotorStandbyTimeout = AUTO_MOTORSTANDBY_TIMEOUT;
 
 int feedSpeed = FEED_MOTOR_SPEED; //represents a number between 1-100
 int feedSteps = FEED_STEPS;
@@ -443,7 +443,7 @@ void checkSerial(){
 
       if (input.startsWith("automotorstandbytimeout:")) {
         input.replace("automotorstandbytimeout:", "");
-        autoMotorStandbyTimeout = input.toInt();
+        autoMotorStandbyTimeout = input.toDouble();
         Serial.print("ok\n");
         resetCommand();
         return;
@@ -484,7 +484,7 @@ void checkSerial(){
 
 
        if (input.startsWith("ping")) {
-        Serial.print(FreeMem());
+        //Serial.print(FreeMem());
         resetCommand();
         Serial.print(" ok\n");
         return;
@@ -905,6 +905,7 @@ void MotorStandByCheck(){
     return;
 
   theTime = millis();
+
   if(theTime - timeSinceLastMotorMove > (autoMotorStandbyTimeout*1000) ) 
      digitalWrite(MOTOR_Enable, HIGH);
 }
