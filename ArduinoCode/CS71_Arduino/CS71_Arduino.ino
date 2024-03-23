@@ -1,5 +1,5 @@
-/// VERSION CS 7.1.240130.1 ///
-/// REQUIRES AI SORTER SOFTWARE VERSION 1.1.39 or newer
+/// VERSION CS 7.1.240317.1 ///
+/// REQUIRES AI SORTER SOFTWARE VERSION 1.1.44 or newer
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -9,12 +9,24 @@
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
 //Stepper controller is set to 16 Microsteps (3 jumpers in place)
 
+#define UseArduinoPWMDimmer false //if you have configured your hardware for to use arduino PWM dimmer for light control, set this to true. See: https://github.com/sjseth/AI-Case-Sorter-CS7.1/tree/main/CommunityContributions/ArduinoCode/ausrobbo/LED%20Control
+
+#if UseArduinoPWMDimmer == false 
+  #define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
+  #define CAMERA_LED_PWM 13 //NOT USED
+#else
+  #define FEED_SENSOR 13 //the proximity sensor under the feed wheel 
+  #define CAMERA_LED_PWM 9 //the output pin for the digital PWM 
+#endif
+
+#define CAMERA_LED_LEVEL  78 //camera brightness if using digital PWM, otherwise ignored 
+
+
 #define FEED_DIRPIN 5 //maps to the DIRECTION signal for the feed motor
 #define FEED_STEPPIN 2 //maps to the PULSE signal for the feed motor
-#define FEED_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
+
 #define FEED_MICROSTEPS 16  //how many microsteps the controller is configured for. 
 #define FEED_HOMING_SENSOR 10  //connects to the feed wheel homing sensor
-#define FEED_SENSOR 9 //the proximity sensor under the feed wheel 
 #define FEEDSENSOR_ENABLED true //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
 #define FEEDSENSOR_TYPE 0 // NPN = 0, PNP = 1
 #define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop
@@ -22,11 +34,13 @@
 
 #define SORT_DIRPIN 6 //maps to the DIRECTION signal for the sorter motor
 #define SORT_STEPPIN 3 //maps to the PULSE signal for the sorter motor
-#define SORT_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
+
 #define SORT_MICROSTEPS 16 //how many microsteps the controller is configured for. 
 #define SORT_HOMING_SENSOR 11  //connects to the sorter homing sensor
 #define AIR_DROP_ENABLED false //enables airdrop
 
+#define MOTOR_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
+#define AUTO_MOTORSTANDBY_TIMEOUT 60 // 0 = disabled; The time in seconds to wait after no motor movement before putting motors in standby
 //ARDUINO CONFIGURATIONS
 
 //number of steps between chutes. With the 8 and 10 slot attachments, 20 is the default. 
@@ -42,14 +56,14 @@
 //FEED MOTOR ACCELLERATION SETTINGS (DISABLED BY DEFAULT)
 #define FEED_ACC_SLOPE 32  //2 steps * 16 MicroStes
 
-#define FEED_MOTOR_SPEED 94 //range of 1-100
+#define FEED_MOTOR_SPEED 90 //range of 1-100
 #define ACC_FEED_ENABLED false //enabled or disables feed motor accelleration. 
 
 //SORT MOTOR ACCELLERATION SETTINGS (ENABLED BY DEFAULT)
 #define ACC_SORT_ENABLED true
-#define SORT_MOTOR_SPEED 94 //range of 1-100
-#define SORT_ACC_SLOPE 64 //this is the number of microsteps to accelerate and deaccellerate in a sort. 
-#define ACC_FACTOR 1200
+#define SORT_MOTOR_SPEED 90 //range of 1-100
+#define SORT_ACC_SLOPE 64 //64 is default - slope this is the number of microsteps to accelerate and deaccellerate in a sort. 
+#define ACC_FACTOR 1200 //1200 is default factor
 #define SORT_HOMING_ENABLED true
 //FEED DELAY SETTINGS
 
@@ -78,6 +92,7 @@
 
 ///END OF USER CONFIGURATIONS ///
 ///DO NOT EDIT BELOW THIS LINE ///
+int cameraLEDLevel = CAMERA_LED_LEVEL; 
 
 int notificationDelay = FEED_CYCLE_NOTIFICATION_DELAY;
 bool airDropEnabled = AIR_DROP_ENABLED;
@@ -87,6 +102,7 @@ int feedCyclePostDelay = FEED_CYCLE_COMPLETE_POSTDELAY;
 int slotDropDelay = SLOT_DROP_DELAY;
 int dropDelay =  airDropEnabled ? feedCyclePostDelay : slotDropDelay;
 
+long autoMotorStandbyTimeout = AUTO_MOTORSTANDBY_TIMEOUT;
 
 int feedSpeed = FEED_MOTOR_SPEED; //represents a number between 1-100
 int feedSteps = FEED_STEPS;
@@ -137,6 +153,7 @@ int testsCompleted=0;
 int sortToSlot=0;
 unsigned long theTime;
 unsigned long timeSinceLastSortMove;
+unsigned long timeSinceLastMotorMove;
 unsigned long msgResetTimer;
 
 
@@ -147,8 +164,8 @@ void setup() {
   setSorterMotorSpeed(SORT_MOTOR_SPEED);
   setFeedMotorSpeed(FEED_MOTOR_SPEED);
 
-  pinMode(FEED_Enable, OUTPUT);
-  pinMode(SORT_Enable, OUTPUT);
+
+  pinMode(MOTOR_Enable, OUTPUT);
   pinMode(FEED_DIRPIN, OUTPUT);
   pinMode(FEED_STEPPIN, OUTPUT);
   pinMode(SORT_DIRPIN, OUTPUT);
@@ -159,9 +176,12 @@ void setup() {
   pinMode(SORT_HOMING_SENSOR, INPUT);
   pinMode(FEED_SENSOR, INPUT);
 
+  #if UseArduinoPWMDimmer == true 
+    pinMode(CAMERA_LED_PWM, OUTPUT);
+    adjustCameraLED(cameraLEDLevel);
+  #endif
 
-  digitalWrite(FEED_Enable, HIGH);
-  digitalWrite(SORT_Enable, HIGH);
+  digitalWrite(MOTOR_Enable, LOW);
   digitalWrite(FEED_DIRPIN, LOW);
 
   IsFeedHoming=true;
@@ -182,7 +202,7 @@ void loop() {
    serialMessenger();
    onFeedComplete();
    runAux();
-
+   MotorStandByCheck();
 }
 
 int FreeMem(){
@@ -311,7 +331,15 @@ void checkSerial(){
 
         Serial.print(",\"FeedHomingOffset\":");
         Serial.print(feedOffsetSteps);
+        
+        Serial.print(",\"AutoMotorStandbyTimeout\":");
+        Serial.print(autoMotorStandbyTimeout);
 
+        #if UseArduinoPWMDimmer == true 
+                Serial.print(",\"CameraLEDLevel\":");
+                Serial.print(cameraLEDLevel);
+        #endif
+   
         Serial.print("}\n");
         resetCommand();
         return;      
@@ -413,6 +441,24 @@ void checkSerial(){
         return;
       }
 
+      if (input.startsWith("automotorstandbytimeout:")) {
+        input.replace("automotorstandbytimeout:", "");
+        autoMotorStandbyTimeout = input.toDouble();
+        Serial.print("ok\n");
+        resetCommand();
+        return;
+      }
+      if (input.startsWith("cameraledlevel:")) {
+         input.replace("cameraledlevel:", "");
+         adjustCameraLED(input.toInt() );
+         //Serial.print("LED: ");
+         //Serial.print((float)cameraLEDLevel/255.0*100.0);
+         //Serial.print("%\n");
+         Serial.print("ok\n");
+         resetCommand();
+         return;
+       }
+
       if (input.startsWith("test:")) {
         input.replace("test:", "");
         IsTestCycle=true;
@@ -434,8 +480,11 @@ void checkSerial(){
         resetCommand();
         return;
       }
+     
+
+
        if (input.startsWith("ping")) {
-        Serial.print(FreeMem());
+        //Serial.print(FreeMem());
         resetCommand();
         Serial.print(" ok\n");
         return;
@@ -600,7 +649,7 @@ void setAccSortDelay(){
     
 }
 void stepSortMotor(bool forward){
-    
+     digitalWrite(MOTOR_Enable, LOW);
      if(forward==true){
        digitalWrite(SORT_DIRPIN, HIGH);
      }else{
@@ -615,6 +664,7 @@ void onSortComplete(){
   if(SortInProgress==true && SortComplete==true){
         SortInProgress=false;
         timeSinceLastSortMove = millis();
+        timeSinceLastMotorMove = timeSinceLastSortMove;
        // Serial.println("runscheduled");
   }
 }
@@ -640,7 +690,7 @@ void serialMessenger(){
 void onFeedComplete(){
   if(FeedCycleComplete==true&& IsFeedError==false){
    
-    
+    timeSinceLastMotorMove = millis();
    //this allows some time for the brass to start dropping before generating the airblast
 
     if(airDropEnabled)
@@ -672,6 +722,7 @@ void scheduleRun(){
       FeedCycleInProgress = true;
       FeedCycleComplete=false;
       IsFeeding=true;
+     
     }else{
       theTime = millis();
       if(theTime - msgResetTimer > 1000){
@@ -689,7 +740,7 @@ void runFeedMotor() {
   if(SortInProgress){
     return;
   }
-  
+
   if(IsFeeding==true && FeedSteps > 0 )
   {
     setAccFeedDelay();
@@ -792,6 +843,7 @@ void homeSortMotor(){
 }
 
 void stepFeedMotor(){
+    digitalWrite(MOTOR_Enable, LOW);
     digitalWrite(FEED_STEPPIN, HIGH);
     delayMicroseconds(1);  //pulse width
     digitalWrite(FEED_STEPPIN, LOW);
@@ -844,3 +896,27 @@ int setSpeedConversion(int speed) {
 
   return 1060 - ((int)(((double)(speed - 1) / 99) * (1000 - 60)) + 60);
 }
+
+void MotorStandByCheck(){
+  if(SortInProgress || IsFeeding)
+    return;
+  
+  if(autoMotorStandbyTimeout==0)
+    return;
+
+  theTime = millis();
+
+  if(theTime - timeSinceLastMotorMove > (autoMotorStandbyTimeout*1000) ) 
+     digitalWrite(MOTOR_Enable, HIGH);
+}
+
+void adjustCameraLED(int level)
+ {
+   // Trim to acceptable values
+   level > 255 ? 255: level;
+   level = level < 0 ? 0 : level;
+ 
+   analogWrite(CAMERA_LED_PWM, level);
+   cameraLEDLevel = level;
+ }
+
