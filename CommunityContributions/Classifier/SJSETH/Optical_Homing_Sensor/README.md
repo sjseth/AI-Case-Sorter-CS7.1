@@ -12,6 +12,8 @@ It involves 5 basic parts:
 4. spring (.3mm x 4mm x 20mm) or (.012"x0.16"x0.79") 
 5. Optical Optocoupler Module
 
+All screw holes are M3  7-10mm length
+
 ![alt text](imgs/sensor_amz.png)
 
 
