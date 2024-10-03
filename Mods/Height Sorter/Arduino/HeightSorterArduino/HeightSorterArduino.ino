@@ -25,15 +25,12 @@
 #define FEEDSENSOR_TYPE 0 // NPN = 0, PNP = 1
 #define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop
 
-
 #define MOTOR_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
 #define AUTO_MOTORSTANDBY_TIMEOUT 60 // 0 = disabled; The time in seconds to wait after no motor movement before putting motors in standby
 
 //ARDUINO CONFIGURATIONS
-
 #define FEED_HOMING_OFFSET_STEPS 3 //additional steps to continue after homing sensor triggered
-// JRS change from 70 to 80
-#define FEED_STEPS 70  // 70 The amount to travel before starting the homing cycle. Should be less than (80 - FEED_HOMING_OFFSET_STEPS)
+
 #define FEED_OVERSTEP_THRESHOLD 90 // 90 if we have gone this many steps without hitting a homing node, something is wrong. Throw an overstep error
 
 //FEED MOTOR ACCELLERATION SETTINGS (DISABLED BY DEFAULT)
