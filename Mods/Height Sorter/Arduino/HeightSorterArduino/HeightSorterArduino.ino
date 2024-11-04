@@ -4,11 +4,11 @@
 #include <Wire.h>
 
 #define FEED_CYCLE_DELAY 100 // the amount of time in milliseconds to wait in between feeds. If not using feed sensor, recommend set this to 1 second (1000)
-#define FEEDSENSOR_ENABLED true // enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
+#define FEEDSENSOR_ENABLED true // enable if feedsensor is installed and working. This is a proximity sensor under the feed tube which tells us a case has dropped completely
 #define FEED_HOMING_ENABLED true //enabled feed homing sensor
 
 
-#if FEED_HOMING_ENABLED == false 
+#if FEED_HOMING_ENABLED == true 
   #define FEED_STEPS 70  // 70 The amount to travel before starting the homing cycle. Should be less than (80 - FEED_HOMING_OFFSET_STEPS)
 #else
  #define FEED_STEPS 80  // 80 The amount to travel between holes with no homing
