@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.240317.1 ///
+/// VERSION CS 7.1.240716.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.46 or newer
 
 #include <Wire.h>
@@ -27,6 +27,7 @@
 
 #define FEED_MICROSTEPS 16  //how many microsteps the controller is configured for. 
 #define FEED_HOMING_SENSOR 10  //connects to the feed wheel homing sensor
+#define FEED_HOMING_SENSOR_TYPE 1 //1=NO (normally open) default switch, 0=NC (normally closed) (optical switches) 
 #define FEEDSENSOR_ENABLED true //enabled if feedsensor is installed and working;//this is a proximity sensor under the feed tube which tells us a case has dropped completely
 #define FEEDSENSOR_TYPE 0 // NPN = 0, PNP = 1
 #define FEED_DONE_SIGNAL 12   // Writes HIGH Signal When Feed is done. Used for mods like AirDrop
@@ -768,7 +769,7 @@ void homeFeedMotor(){
       return;
     }
     
-    if (digitalRead(FEED_HOMING_SENSOR) == 1) {
+    if (digitalRead(FEED_HOMING_SENSOR) == FEED_HOMING_SENSOR_TYPE) {
       IsFeedHoming=false;
       
      // Serial.println("homed!");
