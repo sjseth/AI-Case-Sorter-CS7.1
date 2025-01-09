@@ -39,3 +39,13 @@ The next Picture shows the interrupt for IR sensor. This can be fine tuned by si
 ### Fully assembled 
 
 ![alt text](./images/image-5.png)
+
+### Arduino Code Changes may be required
+
+Depending on the type of the optical switch, you may need to make a change to the arduino code. If the optical switch is a normally open (NO), then there are no changes required. 
+
+However, if the optical switch is an normally closed switch (NC), we have to make small change in the arduino code. You may need to get the latest arduino code from the repo as this modification was added in version 7.1.20250109.1
+
+![alt text](./images/image-6.png)
+
+You need to change the **SORT_HOMING_SENSOR_TYPE** from **1** to **0** and then redeploy the code to your arduino. 

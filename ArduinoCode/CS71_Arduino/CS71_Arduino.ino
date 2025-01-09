@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.240716.1 ///
+/// VERSION CS 7.1.250109.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.46 or newer
 
 #include <Wire.h>
@@ -38,6 +38,7 @@
 
 #define SORT_MICROSTEPS 16 //how many microsteps the controller is configured for. 
 #define SORT_HOMING_SENSOR 11  //connects to the sorter homing sensor
+#define SORT_HOMING_SENSOR_TYPE 1 //1=NO (default) normally open, 0=NC (normally closed) (optical switches) 
 #define AIR_DROP_ENABLED false //enables airdrop
 
 #define MOTOR_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
@@ -818,7 +819,7 @@ void homeSortMotor(){
      
     if(IsSorting==true){
         //code for running sort
-         if(digitalRead(SORT_HOMING_SENSOR)==0){
+         if(digitalRead(SORT_HOMING_SENSOR)!=SORT_HOMING_SENSOR_TYPE){
           if(homingSteps < (200*SORT_MICROSTEPS)){
               stepSortMotor(true);  
               homingSteps++;          
@@ -830,7 +831,7 @@ void homeSortMotor(){
          IsSortHoming =false;
     }
     else{
-      if(digitalRead(SORT_HOMING_SENSOR)==0){
+      if(digitalRead(SORT_HOMING_SENSOR)!=SORT_HOMING_SENSOR_TYPE){
           if(homingSteps < (200*SORT_MICROSTEPS)){
               stepSortMotor(true);  
               homingSteps++;          
