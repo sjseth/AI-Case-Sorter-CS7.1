@@ -3,7 +3,7 @@
 ![](./images/image.png)
 
 ### Requirements:
-The Sorter optics sensor mod requires the following item for the mod to work. 
+The Sorter optics homing sensor mod requires the following items for the mod to work. 
 
 1. New sorter tube support with the homing point repositioned on the support to allow for new position of switch. I have designed this to have a slide on lock ring locking the sorter tube in position. 
 
@@ -30,6 +30,7 @@ Correct connection of power, ground and signal is required as per the optical IR
 
 ### Interrupter for IR 
 The next Picture shows the interrupt for IR sensor. This can be fine tuned by simply sanding the length down to allow for correct homing location.
+
 ![alt text](./images/image-4.png)
 
 
