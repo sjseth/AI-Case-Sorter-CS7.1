@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.250109.1 ///
+/// VERSION CS 7.1.250218.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.46 or newer
 
 #include <Wire.h>
@@ -176,7 +176,7 @@ void setup() {
   pinMode(FEED_DONE_SIGNAL, OUTPUT);
   pinMode(FEED_HOMING_SENSOR, INPUT);
   pinMode(SORT_HOMING_SENSOR, INPUT);
-  pinMode(FEED_SENSOR, INPUT);
+  pinMode(FEED_SENSOR, INPUT_PULLUP);
 
   #if UseArduinoPWMDimmer == true 
     pinMode(CAMERA_LED_PWM, OUTPUT);
