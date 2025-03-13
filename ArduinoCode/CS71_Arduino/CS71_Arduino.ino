@@ -1,4 +1,4 @@
-/// VERSION CS 7.1.250218.1 ///
+/// VERSION CS 7.1.250312.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.46 or newer
 
 #include <Wire.h>
@@ -39,6 +39,8 @@
 #define SORT_MICROSTEPS 16 //how many microsteps the controller is configured for. 
 #define SORT_HOMING_SENSOR 11  //connects to the sorter homing sensor
 #define SORT_HOMING_SENSOR_TYPE 1 //1=NO (default) normally open, 0=NC (normally closed) (optical switches) 
+#define SORT_HOMING_OFFSET_STEPS 0 //additional steps to continue after homing sensor triggered
+
 #define AIR_DROP_ENABLED false //enables airdrop
 
 #define MOTOR_Enable 8 //maps to the enable pin for the FEED MOTOR (on r3 shield enable is shared by motors)
@@ -130,7 +132,6 @@ bool IsFeedHomingOffset = false;
 bool FeedCycleInProgress = false;
 bool FeedCycleComplete = false;
 bool IsFeedError = false;
-
 int FeedSteps = feedMicroSteps;
 int FeedHomingOffsetSteps = feedHomingOffset;
 int feedDelayMS = 150;
@@ -145,8 +146,13 @@ int sortStepsToNextPositionTracker=0;
 bool SortInProgress = false;
 bool SortComplete = false;
 bool IsSorting = false;
+int sortOffsetSteps = SORT_HOMING_OFFSET_STEPS;
+int sortHomingOffset = sortOffsetSteps * SORT_MICROSTEPS;
 bool IsSortHoming = false;
+bool IsSortHomingOffset = false;
+int SortHomingOffsetSteps = sortHomingOffset;
 int slotDelayCalc = 0;
+bool sorterIsHomed = false;
 
 bool IsTestCycle=false;
 bool IsSortTestCycle=false;
@@ -185,7 +191,7 @@ void setup() {
 
   digitalWrite(MOTOR_Enable, LOW);
   digitalWrite(FEED_DIRPIN, LOW);
-
+  jogSorter();
   IsFeedHoming=true;
   IsSortHoming=true;
   msgResetTimer = millis();
@@ -264,6 +270,9 @@ void checkSerial(){
       } 
       if (input.startsWith("homesorter")) {
         sortDelayMS=400;
+        jogSorter();
+        qPos1 = 0;
+        qPos2 = 0;
           IsSortHoming=true;
           Serial.print("ok\n");
           resetCommand();
@@ -274,6 +283,7 @@ void checkSerial(){
           FeedScheduled=false;
           IsFeedHoming=false;
           IsFeedHomingOffset = false;
+          IsSortHomingOffset = false;
           FeedCycleComplete=true;
           FeedCycleInProgress = false;
          // Serial.print("ok\n");
@@ -334,6 +344,9 @@ void checkSerial(){
         Serial.print(",\"FeedHomingOffset\":");
         Serial.print(feedOffsetSteps);
         
+         Serial.print(",\"SortHomingOffset\":");
+        Serial.print(sortOffsetSteps);
+
         Serial.print(",\"AutoMotorStandbyTimeout\":");
         Serial.print(autoMotorStandbyTimeout);
 
@@ -362,6 +375,17 @@ void checkSerial(){
         feedOffsetSteps = input.toInt(); //3
         feedHomingOffset = feedOffsetSteps * FEED_MICROSTEPS; //48
         FeedHomingOffsetSteps = feedHomingOffset; //48
+
+        Serial.print("ok\n");
+        resetCommand();
+        return;
+      }
+
+       if (input.startsWith("sorthomingoffset:")) {
+        input.replace("sorthomingoffset:", "");
+        sortOffsetSteps = input.toInt(); //3
+        sortHomingOffset = sortOffsetSteps * SORT_MICROSTEPS; //48
+        SortHomingOffsetSteps = sortHomingOffset; //48
 
         Serial.print("ok\n");
         resetCommand();
@@ -772,8 +796,6 @@ void homeFeedMotor(){
     
     if (digitalRead(FEED_HOMING_SENSOR) == FEED_HOMING_SENSOR_TYPE) {
       IsFeedHoming=false;
-      
-     // Serial.println("homed!");
       if(FeedCycleInProgress){ //if we are homing initially, we don't need to apply offsets
           IsFeedHomingOffset = true;
           FeedHomingOffsetSteps = feedHomingOffset;
@@ -795,8 +817,6 @@ void homeFeedMotor(){
     }
     if(IsFeedHomingOffset == true && FeedHomingOffsetSteps > 0){
       stepFeedMotor();
-    
-     // Serial.println(FeedHomingOffsetSteps);
       FeedHomingOffsetSteps--;
       FeedSteps--;
     }
@@ -813,35 +833,67 @@ void homeSortMotor(){
      IsSorting=false;
          SortComplete = true;
          IsSortHoming =false;
+         IsSortHomingOffset = false;
          return;
-    }
+  }
   if(IsSortHoming==true){
-     
+     //if a sort is in progress and the arm is moving from any position to zero
+     //this code is reached when the steps have been completed to go to zero
+     //we are going to check if the homing sensor is not activated (which it should be as we are at zero), 
+     //if not, we are going to step the motor until it is or we have reached 200 steps (1 complete turn)
     if(IsSorting==true){
-        //code for running sort
-         if(digitalRead(SORT_HOMING_SENSOR)!=SORT_HOMING_SENSOR_TYPE){
+         if(digitalRead(SORT_HOMING_SENSOR)!=SORT_HOMING_SENSOR_TYPE){ //
           if(homingSteps < (200*SORT_MICROSTEPS)){
               stepSortMotor(true);  
-              homingSteps++;          
+              homingSteps++; 
           }
           return;
          }
          IsSorting=false;
          SortComplete = true;
          IsSortHoming =false;
+         homingSteps=0;
+         return;
     }
-    else{
+    //else if we are not doing an offset move (post homing) and the sensor is not 
+    //activated, lets keep moving until it is or we hit 210 homing steps (otherwise we turn indefinitely)
+    else if(IsSortHomingOffset != true){
       if(digitalRead(SORT_HOMING_SENSOR)!=SORT_HOMING_SENSOR_TYPE){
-          if(homingSteps < (200*SORT_MICROSTEPS)){
+          if(homingSteps < (210*SORT_MICROSTEPS)){
               stepSortMotor(true);  
               homingSteps++;          
           }
-      }else{
+      }else{ //we are homed! Time to schedule an offset move and reset the homing steps counter. 
+        IsSortHomingOffset=true;
+        SortHomingOffsetSteps = sortHomingOffset;
+        homingSteps = 0;
+      }
+    }
+
+   //If sort homing offset true, means we are in offset steps
+    if(IsSortHomingOffset == true){
+      if(sortHomingOffset == 0) //if there are no offset steps, we are done
+      {
+        IsSortHomingOffset = false;
         IsSortHoming=false;
-       // Serial.println("homed!");
+        SortComplete=true;
+        return;
+      }
+      if(SortHomingOffsetSteps > 0){
+        stepSortMotor(true);
+        SortHomingOffsetSteps--;
+      }
+      else if(IsSortHomingOffset == true && SortHomingOffsetSteps<=0){
+        IsSortHomingOffset = false;
+        IsSortHoming=false;
+        SortComplete=true;
+        homingSteps=0;
       }
     }
   }
+
+
+ 
 }
 
 void stepFeedMotor(){
@@ -911,7 +963,13 @@ void MotorStandByCheck(){
   if(theTime - timeSinceLastMotorMove > (autoMotorStandbyTimeout*1000) ) 
      digitalWrite(MOTOR_Enable, HIGH);
 }
-
+int js=0;
+int jogSteps = 25 * SORT_MICROSTEPS;
+void jogSorter(){
+    for(js=0;js<jogSteps;js++){
+      stepSortMotor(false);
+    }
+}
 void adjustCameraLED(int level)
  {
    // Trim to acceptable values
