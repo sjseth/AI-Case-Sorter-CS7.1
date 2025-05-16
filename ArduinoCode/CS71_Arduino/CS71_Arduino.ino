@@ -1,9 +1,10 @@
-/// VERSION CS 7.1.250312.1 ///
+/// VERSION CS 7.1.250516.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.46 or newer
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
 
+#define FIRMWARE_VERSION "7.1.250516.1"
 
 //PIN CONFIGURATIONS
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
@@ -93,6 +94,14 @@
 // This gives time for the brass to clear the sort tube before moving the sort arm. 
 #define SLOT_DROP_DELAY 400
 
+//DEBOUNCE is a feature to counteract case bounce which can occur if the machine runs out of brass and a peice of brass drops a distance from
+//from the collator to the feeder. It developes speed and bounces of the prox sensor triggering the sensor and bouncing back up to cause a jam. 
+//this seeks to eliminate that by adding a small pause to let the case bounce and settle. 
+
+#define DEBOUNCE_TIMEOUT 300 //default 500. The number of milliseconds without sensor activation (meaning no brass in the feed) required to trigger a debounce pause.
+
+#define DEBOUNCE_PAUSE_TIME 500 //default 500.  Set to 0 to disable. The number of milliseconds to pause to wait for case to settle. 
+
 
 ///END OF USER CONFIGURATIONS ///
 ///DO NOT EDIT BELOW THIS LINE ///
@@ -164,6 +173,13 @@ unsigned long timeSinceLastSortMove;
 unsigned long timeSinceLastMotorMove;
 unsigned long msgResetTimer;
 
+//debounce variables
+unsigned long lastTrigger = millis();
+int triggerTimeout = DEBOUNCE_TIMEOUT;
+int debounceTime= DEBOUNCE_PAUSE_TIME;
+bool proxActivated = false;
+bool sensorDelay = false;
+
 
 void setup() {
   Serial.begin(9600);
@@ -200,6 +216,7 @@ void setup() {
 
 void loop() {
    checkSerial();
+   getProxState();
    runSortMotor();
    onSortComplete();
    scheduleRun();
@@ -261,6 +278,15 @@ void checkSerial(){
         resetCommand();
         return;
       }
+
+      if (input.startsWith("version")) {
+       
+        Serial.print(FIRMWARE_VERSION);
+        Serial.print("\n");
+        resetCommand();
+        return;
+      }
+
       if (input.startsWith("homefeeder")) {
         feedDelayMS=400;
           IsFeedHoming=true;
@@ -349,6 +375,12 @@ void checkSerial(){
 
         Serial.print(",\"AutoMotorStandbyTimeout\":");
         Serial.print(autoMotorStandbyTimeout);
+        
+        Serial.print(",\"DebounceTimeout\":");
+        Serial.print(triggerTimeout);
+
+        Serial.print(",\"DebouncePauseTime\":");
+        Serial.print(debounceTime);
 
         #if UseArduinoPWMDimmer == true 
                 Serial.print(",\"CameraLEDLevel\":");
@@ -359,6 +391,22 @@ void checkSerial(){
         resetCommand();
         return;      
       }
+
+        if (input.startsWith("debounceTimeout:")) {
+          input.replace("debounceTimeout:", "");
+          triggerTimeout = input.toInt();
+          Serial.print("ok\n");
+          resetCommand();
+          return;
+        }
+
+        if (input.startsWith("debounceTime:")) {
+          input.replace("debounceTime:", "");
+          debounceTime = input.toInt();
+          Serial.print("ok\n");
+          resetCommand();
+          return;
+        }
 
        //set feed speed. Values 1-100. Def 60
       if (input.startsWith("feedspeed:")) {
@@ -740,7 +788,7 @@ void onFeedComplete(){
 void scheduleRun(){
  
   if(FeedScheduled==true && IsFeeding==false){
-    if(digitalRead(FEED_SENSOR) == FEEDSENSOR_TYPE || forceFeed==true || FEEDSENSOR_ENABLED==false){
+    if(readyToFeed()){
       //set run variables
       IsFeedError=false;
       FeedSteps = feedMicroSteps;
@@ -762,6 +810,42 @@ void scheduleRun(){
     }
   }
 }
+
+
+void getProxState(){
+
+  //if the sensor is triggered, update the last trigger time and set the variable proxActivated
+  if(digitalRead(FEED_SENSOR) == FEEDSENSOR_TYPE){
+      proxActivated=true;
+      lastTrigger = millis();
+      return;
+  }
+
+  //sensor is not triggered, set the offTimer and set the variable to false
+  proxActivated=false;
+    
+  //check to see if the time since last trigger is longer than the timeout, if so set the delay variable. 
+  if(millis() - lastTrigger > triggerTimeout){
+    sensorDelay = true;
+  }
+}
+
+bool readyToFeed()
+{
+  if(!(proxActivated==true || forceFeed==true || FEEDSENSOR_ENABLED==false)){
+    return false;
+  }
+
+  //sensorDelay is calcualted in the getProxState() state method above. 
+  if(sensorDelay){
+        delay(debounceTime);
+        sensorDelay = false;
+        return false;
+  }
+   return true;
+}
+
+
 void runFeedMotor() {
   if(SortInProgress){
     return;
