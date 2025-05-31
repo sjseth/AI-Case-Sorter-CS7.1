@@ -1,10 +1,10 @@
-/// VERSION CS 7.1.250529.1 ///
+/// VERSION CS 7.1.250531.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.46 or newer
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
 
-#define FIRMWARE_VERSION "7.1.250529.1"
+#define FIRMWARE_VERSION "7.1.250531.1"
 
 //PIN CONFIGURATIONS
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
@@ -832,13 +832,16 @@ void getProxState(){
 
 bool readyToFeed()
 {
-  if(!(proxActivated==true || forceFeed==true || FEEDSENSOR_ENABLED==false)){
+ //if feedsensor is not enabled, or it is a forcefeed,  we are always ready!
+  if(FEEDSENSOR_ENABLED==false || forceFeed==true){
+    return true;
+  }
+
+  //if no brass is detected, we are not ready
+  if(proxActivated == false){
     return false;
   }
 
-  if(forceFeed==true){
-    return true;
-  }
   //sensorDelay is calcualted in the getProxState() state method above. 
   if(sensorDelay){
         delay(debounceTime);
