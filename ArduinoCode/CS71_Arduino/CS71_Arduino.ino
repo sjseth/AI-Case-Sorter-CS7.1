@@ -1,10 +1,10 @@
-/// VERSION CS 7.1.250531.1 ///
+/// VERSION CS 7.1.250923.1 ///
 /// REQUIRES AI SORTER SOFTWARE VERSION 1.1.46 or newer
 
 #include <Wire.h>
 #include <SoftwareSerial.h>
 
-#define FIRMWARE_VERSION "7.1.250531.1"
+#define FIRMWARE_VERSION "7.1.250923.1"
 
 //PIN CONFIGURATIONS
 //ARDUINO UNO WITH 4 MOTOR CONTROLLER
@@ -183,7 +183,7 @@ bool sensorDelay = false;
 
 void setup() {
   Serial.begin(9600);
-  Serial.print("Ready\n");
+  Serial.print(F("Ready\n"));
   
   setSorterMotorSpeed(SORT_MOTOR_SPEED);
   setFeedMotorSpeed(FEED_MOTOR_SPEED);
@@ -282,7 +282,7 @@ void checkSerial(){
       if (input.startsWith("version")) {
        
         Serial.print(FIRMWARE_VERSION);
-        Serial.print("\n");
+        Serial.print(F("\n"));
         resetCommand();
         return;
       }
@@ -290,7 +290,7 @@ void checkSerial(){
       if (input.startsWith("homefeeder")) {
         feedDelayMS=400;
           IsFeedHoming=true;
-         Serial.print("ok\n");
+         Serial.print(F("ok\n"));
          resetCommand();
          return;
       } 
@@ -300,7 +300,7 @@ void checkSerial(){
         qPos1 = 0;
         qPos2 = 0;
           IsSortHoming=true;
-          Serial.print("ok\n");
+          Serial.print(F("ok\n"));
           resetCommand();
          return;
       } 
@@ -319,7 +319,7 @@ void checkSerial(){
       if (input.startsWith("sortto:")) {
           input.replace("sortto:", "");
           moveSorterToPosition(input.toInt());
-           Serial.print("ok\n");
+           Serial.print(F("ok\n"));
            resetCommand();
          return;
       } 
@@ -337,10 +337,10 @@ void checkSerial(){
 
       if (input.startsWith("getconfig")) {
      
-        Serial.print("{\"FeedMotorSpeed\":");
+        Serial.print(F("{\"FeedMotorSpeed\":"));
         Serial.print(feedSpeed);
 
-        Serial.print(",\"FeedCycleSteps\":");
+        Serial.print(F(",\")FeedCycleSteps\":");
         Serial.print(feedSteps);
 
         Serial.print(",\"SortMotorSpeed\":");
@@ -387,7 +387,7 @@ void checkSerial(){
                 Serial.print(cameraLEDLevel);
         #endif
    
-        Serial.print("}\n");
+        Serial.print(F("}\n"));
         resetCommand();
         return;      
       }
@@ -395,7 +395,7 @@ void checkSerial(){
         if (input.startsWith("debounceTimeout:")) {
           input.replace("debounceTimeout:", "");
           triggerTimeout = input.toInt();
-          Serial.print("ok\n");
+          Serial.print(F("ok\n"));
           resetCommand();
           return;
         }
@@ -403,7 +403,7 @@ void checkSerial(){
         if (input.startsWith("debounceTime:")) {
           input.replace("debounceTime:", "");
           debounceTime = input.toInt();
-          Serial.print("ok\n");
+          Serial.print(F("ok\n"));
           resetCommand();
           return;
         }
@@ -413,7 +413,7 @@ void checkSerial(){
         input.replace("feedspeed:", "");
         feedSpeed = input.toInt();
         setFeedMotorSpeed(feedSpeed);
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
@@ -424,7 +424,7 @@ void checkSerial(){
         feedHomingOffset = feedOffsetSteps * FEED_MICROSTEPS; //48
         FeedHomingOffsetSteps = feedHomingOffset; //48
 
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
@@ -435,7 +435,7 @@ void checkSerial(){
         sortHomingOffset = sortOffsetSteps * SORT_MICROSTEPS; //48
         SortHomingOffsetSteps = sortHomingOffset; //48
 
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
@@ -444,7 +444,7 @@ void checkSerial(){
         input.replace("sortspeed:", "");
         sortSpeed = input.toInt();
         setSorterMotorSpeed(sortSpeed);
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
@@ -453,7 +453,7 @@ void checkSerial(){
       if (input.startsWith("sortsteps:")) {
         input.replace("sortsteps:", "");
         sortSteps = input.toInt();
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
@@ -464,14 +464,14 @@ void checkSerial(){
         feedSteps = input.toInt();
         feedMicroSteps = feedSteps * FEED_MICROSTEPS;
         feedOverTravelSteps = feedMicroSteps - (FEED_OVERSTEP_THRESHOLD * FEED_MICROSTEPS);
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
       if (input.startsWith("notificationdelay:")) {
         input.replace("notificationdelay:", "");
         notificationDelay = input.toInt();
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
@@ -479,7 +479,7 @@ void checkSerial(){
         input.replace("slotdropdelay:", "");
         slotDropDelay = input.toInt();
         dropDelay =  airDropEnabled ? feedCyclePostDelay: slotDropDelay;
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
@@ -487,7 +487,7 @@ void checkSerial(){
         input.replace("airdropenabled:", "");
         airDropEnabled = stringToBool(input);
         dropDelay =  airDropEnabled ? feedCyclePostDelay: slotDropDelay;
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
@@ -496,21 +496,21 @@ void checkSerial(){
         input.replace("airdroppostdelay:", "");
         feedCyclePostDelay = input.toInt();
         dropDelay =  airDropEnabled ? feedCyclePostDelay: slotDropDelay;
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
        if (input.startsWith("airdroppredelay:")) {
         input.replace("airdroppredelay:", "");
         feedCyclePreDelay = input.toInt();
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
       if (input.startsWith("airdropdsignalduration:")) {
         input.replace("airdropdsignalduration:", "");
         feedCycleSignalTime = input.toInt();
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
@@ -518,17 +518,17 @@ void checkSerial(){
       if (input.startsWith("automotorstandbytimeout:")) {
         input.replace("automotorstandbytimeout:", "");
         autoMotorStandbyTimeout = input.toDouble();
-        Serial.print("ok\n");
+        Serial.print(F("ok\n"));
         resetCommand();
         return;
       }
       if (input.startsWith("cameraledlevel:")) {
          input.replace("cameraledlevel:", "");
          adjustCameraLED(input.toInt() );
-         //Serial.print("LED: ");
+         //Serial.print(F("LED: "));
          //Serial.print((float)cameraLEDLevel/255.0*100.0);
-         //Serial.print("%\n");
-         Serial.print("ok\n");
+         //Serial.print(F("%\n"));
+         Serial.print(F("ok\n"));
          resetCommand();
          return;
        }
@@ -540,7 +540,7 @@ void checkSerial(){
         testsCompleted=0;
         FeedScheduled=false;
         FeedCycleInProgress=false;
-        Serial.print("testing started\n");
+        Serial.print(F("testing started\n"));
         resetCommand();
         return;
       }
@@ -550,7 +550,7 @@ void checkSerial(){
         IsSortTestCycle=true;
         testCycleInterval=input.toInt();
         testsCompleted=0;
-        Serial.print("testing started\n");
+        Serial.print(F("testing started\n"));
         resetCommand();
         return;
       }
@@ -560,11 +560,11 @@ void checkSerial(){
        if (input.startsWith("ping")) {
         //Serial.print(FreeMem());
         resetCommand();
-        Serial.print(" ok\n");
+        Serial.print(F(" ok\n"));
         return;
       }
       resetCommand();
-      Serial.print("ok\n");
+      Serial.print(F("ok\n"));
   }
 }
 
@@ -595,9 +595,9 @@ void runAux(){
         scheduleRun();
         
         Serial.print(testsCompleted);
-        Serial.print(" - ");
+        Serial.print(F(" - "));
         Serial.print(slot);
-        Serial.print("\n");
+        Serial.print(F("\n"));
         testsCompleted++;
 
             
@@ -614,7 +614,7 @@ void runAux(){
        int slot = random(0,8);
        delay(40);
        Serial.print(testsCompleted);
-       Serial.print(" - Sorting to: ");
+       Serial.print(F(" - Sorting to: "));
        Serial.println(slot);
        moveSorterToPosition(slot);
         testsCompleted++;
@@ -776,7 +776,7 @@ void onFeedComplete(){
      
     }
     delay(notificationDelay);
-    Serial.print("done\n");
+    Serial.print(F("done\n"));
     //Serial.flush();
     FeedCycleComplete=false;
     forceFeed= false;
