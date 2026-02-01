@@ -340,50 +340,50 @@ void checkSerial(){
         Serial.print(F("{\"FeedMotorSpeed\":"));
         Serial.print(feedSpeed);
 
-        Serial.print(F(",\")FeedCycleSteps\":");
+        Serial.print(F(",\"FeedCycleSteps\":"));
         Serial.print(feedSteps);
 
-        Serial.print(",\"SortMotorSpeed\":");
+        Serial.print(F(",\"SortMotorSpeed\":"));
         Serial.print(sortSpeed);
 
-        Serial.print(",\"SortSteps\":");
+        Serial.print(F(",\"SortSteps\":"));
         Serial.print(sortSteps);
 
-        Serial.print(",\"NotificationDelay\":");
+        Serial.print(F(",\"NotificationDelay\":"));
         Serial.print(notificationDelay);
 
-        Serial.print(",\"SlotDropDelay\":");
+        Serial.print(F(",\"SlotDropDelay\":"));
         Serial.print(slotDropDelay);
 
-        Serial.print(",\"AirDropEnabled\":");
+        Serial.print(F(",\"AirDropEnabled\":"));
         Serial.print(airDropEnabled);
 
-        Serial.print(",\"AirDropPostDelay\":");
+        Serial.print(F(",\"AirDropPostDelay\":"));
         Serial.print(feedCyclePostDelay);
 
-        Serial.print(",\"AirDropPreDelay\":");
+        Serial.print(F(",\"AirDropPreDelay\":"));
         Serial.print(feedCyclePreDelay);
 
-        Serial.print(",\"AirDropSignalTime\":");
+        Serial.print(F(",\"AirDropSignalTime\":"));
         Serial.print(feedCycleSignalTime);
 
-        Serial.print(",\"FeedHomingOffset\":");
+        Serial.print(F(",\"FeedHomingOffset\":"));
         Serial.print(feedOffsetSteps);
         
-         Serial.print(",\"SortHomingOffset\":");
+         Serial.print(F(",\"SortHomingOffset\":"));
         Serial.print(sortOffsetSteps);
 
-        Serial.print(",\"AutoMotorStandbyTimeout\":");
+        Serial.print(F(",\"AutoMotorStandbyTimeout\":"));
         Serial.print(autoMotorStandbyTimeout);
         
-        Serial.print(",\"DebounceTimeout\":");
+        Serial.print(F(",\"DebounceTimeout\":"));
         Serial.print(triggerTimeout);
 
-        Serial.print(",\"DebouncePauseTime\":");
+        Serial.print(F(",\"DebouncePauseTime\":"));
         Serial.print(debounceTime);
 
         #if UseArduinoPWMDimmer == true 
-                Serial.print(",\"CameraLEDLevel\":");
+                Serial.print(F(",\"CameraLEDLevel\":"));
                 Serial.print(cameraLEDLevel);
         #endif
    
